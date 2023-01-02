@@ -1,0 +1,2 @@
+ALTER TABLE spotify_accounts
+ADD COLUMN created_at TIMESTAMPTZ NOT NULL;
