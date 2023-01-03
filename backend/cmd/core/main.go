@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/mootslive/mono/backend"
 	"github.com/mootslive/mono/backend/db"
 	"golang.org/x/exp/slog"
@@ -14,22 +14,27 @@ import (
 
 func run(out io.Writer) error {
 	ctx := context.Background()
-	log := slog.New(slog.NewJSONHandler(out))
+	logOpts := slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}
+	log := slog.New(logOpts.NewJSONHandler(out))
 	log.Info("starting mootslive backend")
 
-	pgxCfg, err := pgx.ParseConfig("postgres://mootslive:mootslive@localhost:5432/mootslive")
+	pgxCfg, err := pgxpool.ParseConfig("postgres://mootslive:mootslive@localhost:5432/mootslive")
 	if err != nil {
 		return fmt.Errorf("parsing cfg: %w", err)
 	}
 
-	conn, err := pgx.ConnectConfig(ctx, pgxCfg)
+	conn, err := pgxpool.ConnectConfig(ctx, pgxCfg)
 	if err != nil {
 		return fmt.Errorf("connecting to pgx: %w", err)
 	}
+	defer conn.Close()
 
 	poller := &backend.SpotifyPoller{
-		DB:  db.New(conn),
-		Log: log.WithGroup("poller"),
+		DB:      conn,
+		Queries: db.New(conn),
+		Log:     log.WithGroup("poller"),
 	}
 
 	if err := poller.Run(ctx); err != nil {

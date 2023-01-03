@@ -10,20 +10,21 @@ import (
 )
 
 type Listen struct {
-	ID        string
-	UserID    string
-	CreatedAt time.Time
-	Isrc      string
-	Source    string
+	ID         string
+	UserID     string
+	CreatedAt  time.Time
+	Isrc       string
+	Source     string
+	ListenedAt time.Time
 }
 
 type SpotifyAccount struct {
-	SpotifyUserID string
-	UserID        string
-	AccessToken   string
-	RefreshToken  string
-	LastScanned   sql.NullTime
-	CreatedAt     time.Time
+	SpotifyUserID  string
+	UserID         string
+	AccessToken    string
+	RefreshToken   string
+	LastListenedAt sql.NullTime
+	CreatedAt      time.Time
 }
 
 type User struct {

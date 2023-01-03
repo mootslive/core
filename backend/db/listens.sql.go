@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
 
@@ -16,16 +17,18 @@ INSERT INTO listens (
     user_id,
     created_at,
     source,
-    isrc
-) VALUES ($1, $2, $3, $4, $5)
+    isrc,
+    listened_at
+) VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type CreateListenParams struct {
-	ID        string
-	UserID    string
-	CreatedAt time.Time
-	Source    string
-	Isrc      string
+	ID         string
+	UserID     string
+	CreatedAt  time.Time
+	Source     string
+	Isrc       string
+	ListenedAt time.Time
 }
 
 func (q *Queries) CreateListen(ctx context.Context, arg CreateListenParams) error {
@@ -35,6 +38,7 @@ func (q *Queries) CreateListen(ctx context.Context, arg CreateListenParams) erro
 		arg.CreatedAt,
 		arg.Source,
 		arg.Isrc,
+		arg.ListenedAt,
 	)
 	return err
 }
@@ -69,7 +73,7 @@ func (q *Queries) CreateSpotifyAccount(ctx context.Context, arg CreateSpotifyAcc
 }
 
 const getSpotifyAccountsForScanning = `-- name: GetSpotifyAccountsForScanning :many
-SELECT spotify_user_id, user_id, access_token, refresh_token, last_scanned, created_at FROM spotify_accounts
+SELECT spotify_user_id, user_id, access_token, refresh_token, last_listened_at, created_at FROM spotify_accounts
 `
 
 func (q *Queries) GetSpotifyAccountsForScanning(ctx context.Context) ([]SpotifyAccount, error) {
@@ -86,7 +90,7 @@ func (q *Queries) GetSpotifyAccountsForScanning(ctx context.Context) ([]SpotifyA
 			&i.UserID,
 			&i.AccessToken,
 			&i.RefreshToken,
-			&i.LastScanned,
+			&i.LastListenedAt,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -97,4 +101,36 @@ func (q *Queries) GetSpotifyAccountsForScanning(ctx context.Context) ([]SpotifyA
 		return nil, err
 	}
 	return items, nil
+}
+
+const selectSpotifyAccountForUpdate = `-- name: SelectSpotifyAccountForUpdate :one
+SELECT spotify_user_id, user_id, access_token, refresh_token, last_listened_at, created_at FROM spotify_accounts WHERE spotify_user_id = $1 FOR UPDATE
+`
+
+func (q *Queries) SelectSpotifyAccountForUpdate(ctx context.Context, spotifyUserID string) (SpotifyAccount, error) {
+	row := q.db.QueryRow(ctx, selectSpotifyAccountForUpdate, spotifyUserID)
+	var i SpotifyAccount
+	err := row.Scan(
+		&i.SpotifyUserID,
+		&i.UserID,
+		&i.AccessToken,
+		&i.RefreshToken,
+		&i.LastListenedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateSpotifyAccountListenedAt = `-- name: UpdateSpotifyAccountListenedAt :exec
+UPDATE spotify_accounts SET last_listened_at = $1 WHERE spotify_user_id = $2
+`
+
+type UpdateSpotifyAccountListenedAtParams struct {
+	LastListenedAt sql.NullTime
+	SpotifyUserID  string
+}
+
+func (q *Queries) UpdateSpotifyAccountListenedAt(ctx context.Context, arg UpdateSpotifyAccountListenedAtParams) error {
+	_, err := q.db.Exec(ctx, updateSpotifyAccountListenedAt, arg.LastListenedAt, arg.SpotifyUserID)
+	return err
 }

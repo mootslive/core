@@ -4,8 +4,9 @@ INSERT INTO listens (
     user_id,
     created_at,
     source,
-    isrc
-) VALUES ($1, $2, $3, $4, $5);
+    isrc,
+    listened_at
+) VALUES ($1, $2, $3, $4, $5, $6);
 
 -- name: GetSpotifyAccountsForScanning :many
 SELECT * FROM spotify_accounts;
@@ -18,3 +19,9 @@ INSERT INTO spotify_accounts (
     refresh_token,
     created_at
 )  VALUES ($1, $2, $3, $4, $5);
+
+-- name: SelectSpotifyAccountForUpdate :one
+SELECT * FROM spotify_accounts WHERE spotify_user_id = $1 FOR UPDATE;
+
+-- name: UpdateSpotifyAccountListenedAt :exec
+UPDATE spotify_accounts SET last_listened_at = $1 WHERE spotify_user_id = $2;

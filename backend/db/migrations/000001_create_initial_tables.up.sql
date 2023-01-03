@@ -15,5 +15,5 @@ CREATE TABLE spotify_accounts (
     user_id CHAR(27) NOT NULL,
     access_token VARCHAR(256) NOT NULL,
     refresh_token VARCHAR(256) NOT NULL,
-    last_scanned TIMESTAMPTZ
+    last_listened_at TIMESTAMPTZ
 );
