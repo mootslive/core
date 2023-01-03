@@ -1,0 +1,15 @@
+{
+  "name": "@mootslive/proto",
+  "devDependencies": {
+    "@bufbuild/protoc-gen-connect-web": "^0.3.2",
+    "@bufbuild/protoc-gen-es": "^0.3.0"
+  },
+  "dependencies": {
+    "@bufbuild/connect-web": "^0.3.2",
+    "@bufbuild/protobuf": "^0.3.0"
+  },
+  "scripts": {
+    "buf:generate": "buf generate",
+    "buf:lint": "buf lint"
+  }
+}

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package mootslive.v1;
+
+option go_package = "proto/mootslive/v1;mootslivepbv1";
+
+message GetStatusRequest {}
+
+message GetStatusResponse {
+  string x_clacks_overhead = 1;
+}
+
+service AdminService {
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse) {}
+}
