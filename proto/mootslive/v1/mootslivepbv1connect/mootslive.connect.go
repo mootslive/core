@@ -8,8 +8,8 @@ import (
 	context "context"
 	errors "errors"
 	connect_go "github.com/bufbuild/connect-go"
+	v1 "github.com/mootslive/mono/proto/mootslive/v1"
 	http "net/http"
-	v1 "proto/mootslive/v1"
 	strings "strings"
 )
 
@@ -23,6 +23,8 @@ const _ = connect_go.IsAtLeastVersion0_1_0
 const (
 	// AdminServiceName is the fully-qualified name of the AdminService service.
 	AdminServiceName = "mootslive.v1.AdminService"
+	// UserServiceName is the fully-qualified name of the UserService service.
+	UserServiceName = "mootslive.v1.UserService"
 )
 
 // AdminServiceClient is a client for the mootslive.v1.AdminService service.
@@ -83,4 +85,108 @@ type UnimplementedAdminServiceHandler struct{}
 
 func (UnimplementedAdminServiceHandler) GetStatus(context.Context, *connect_go.Request[v1.GetStatusRequest]) (*connect_go.Response[v1.GetStatusResponse], error) {
 	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("mootslive.v1.AdminService.GetStatus is not implemented"))
+}
+
+// UserServiceClient is a client for the mootslive.v1.UserService service.
+type UserServiceClient interface {
+	GetMe(context.Context, *connect_go.Request[v1.GetMeRequest]) (*connect_go.Response[v1.GetMeResponse], error)
+	BeginTwitterAuth(context.Context, *connect_go.Request[v1.BeginTwitterAuthRequest]) (*connect_go.Response[v1.BeginTwitterAuthResponse], error)
+	FinishTwitterAuth(context.Context, *connect_go.Request[v1.FinishTwitterAuthRequest]) (*connect_go.Response[v1.FinishTwitterAuthResponse], error)
+}
+
+// NewUserServiceClient constructs a client for the mootslive.v1.UserService service. By default, it
+// uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and sends
+// uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
+// connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewUserServiceClient(httpClient connect_go.HTTPClient, baseURL string, opts ...connect_go.ClientOption) UserServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &userServiceClient{
+		getMe: connect_go.NewClient[v1.GetMeRequest, v1.GetMeResponse](
+			httpClient,
+			baseURL+"/mootslive.v1.UserService/GetMe",
+			opts...,
+		),
+		beginTwitterAuth: connect_go.NewClient[v1.BeginTwitterAuthRequest, v1.BeginTwitterAuthResponse](
+			httpClient,
+			baseURL+"/mootslive.v1.UserService/BeginTwitterAuth",
+			opts...,
+		),
+		finishTwitterAuth: connect_go.NewClient[v1.FinishTwitterAuthRequest, v1.FinishTwitterAuthResponse](
+			httpClient,
+			baseURL+"/mootslive.v1.UserService/FinishTwitterAuth",
+			opts...,
+		),
+	}
+}
+
+// userServiceClient implements UserServiceClient.
+type userServiceClient struct {
+	getMe             *connect_go.Client[v1.GetMeRequest, v1.GetMeResponse]
+	beginTwitterAuth  *connect_go.Client[v1.BeginTwitterAuthRequest, v1.BeginTwitterAuthResponse]
+	finishTwitterAuth *connect_go.Client[v1.FinishTwitterAuthRequest, v1.FinishTwitterAuthResponse]
+}
+
+// GetMe calls mootslive.v1.UserService.GetMe.
+func (c *userServiceClient) GetMe(ctx context.Context, req *connect_go.Request[v1.GetMeRequest]) (*connect_go.Response[v1.GetMeResponse], error) {
+	return c.getMe.CallUnary(ctx, req)
+}
+
+// BeginTwitterAuth calls mootslive.v1.UserService.BeginTwitterAuth.
+func (c *userServiceClient) BeginTwitterAuth(ctx context.Context, req *connect_go.Request[v1.BeginTwitterAuthRequest]) (*connect_go.Response[v1.BeginTwitterAuthResponse], error) {
+	return c.beginTwitterAuth.CallUnary(ctx, req)
+}
+
+// FinishTwitterAuth calls mootslive.v1.UserService.FinishTwitterAuth.
+func (c *userServiceClient) FinishTwitterAuth(ctx context.Context, req *connect_go.Request[v1.FinishTwitterAuthRequest]) (*connect_go.Response[v1.FinishTwitterAuthResponse], error) {
+	return c.finishTwitterAuth.CallUnary(ctx, req)
+}
+
+// UserServiceHandler is an implementation of the mootslive.v1.UserService service.
+type UserServiceHandler interface {
+	GetMe(context.Context, *connect_go.Request[v1.GetMeRequest]) (*connect_go.Response[v1.GetMeResponse], error)
+	BeginTwitterAuth(context.Context, *connect_go.Request[v1.BeginTwitterAuthRequest]) (*connect_go.Response[v1.BeginTwitterAuthResponse], error)
+	FinishTwitterAuth(context.Context, *connect_go.Request[v1.FinishTwitterAuthRequest]) (*connect_go.Response[v1.FinishTwitterAuthResponse], error)
+}
+
+// NewUserServiceHandler builds an HTTP handler from the service implementation. It returns the path
+// on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewUserServiceHandler(svc UserServiceHandler, opts ...connect_go.HandlerOption) (string, http.Handler) {
+	mux := http.NewServeMux()
+	mux.Handle("/mootslive.v1.UserService/GetMe", connect_go.NewUnaryHandler(
+		"/mootslive.v1.UserService/GetMe",
+		svc.GetMe,
+		opts...,
+	))
+	mux.Handle("/mootslive.v1.UserService/BeginTwitterAuth", connect_go.NewUnaryHandler(
+		"/mootslive.v1.UserService/BeginTwitterAuth",
+		svc.BeginTwitterAuth,
+		opts...,
+	))
+	mux.Handle("/mootslive.v1.UserService/FinishTwitterAuth", connect_go.NewUnaryHandler(
+		"/mootslive.v1.UserService/FinishTwitterAuth",
+		svc.FinishTwitterAuth,
+		opts...,
+	))
+	return "/mootslive.v1.UserService/", mux
+}
+
+// UnimplementedUserServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedUserServiceHandler struct{}
+
+func (UnimplementedUserServiceHandler) GetMe(context.Context, *connect_go.Request[v1.GetMeRequest]) (*connect_go.Response[v1.GetMeResponse], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("mootslive.v1.UserService.GetMe is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) BeginTwitterAuth(context.Context, *connect_go.Request[v1.BeginTwitterAuthRequest]) (*connect_go.Response[v1.BeginTwitterAuthResponse], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("mootslive.v1.UserService.BeginTwitterAuth is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) FinishTwitterAuth(context.Context, *connect_go.Request[v1.FinishTwitterAuthRequest]) (*connect_go.Response[v1.FinishTwitterAuthResponse], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("mootslive.v1.UserService.FinishTwitterAuth is not implemented"))
 }

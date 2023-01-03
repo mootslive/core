@@ -1,8 +1,10 @@
 syntax = "proto3";
 
+import "google/protobuf/timestamp.proto";
+
 package mootslive.v1;
 
-option go_package = "proto/mootslive/v1;mootslivepbv1";
+option go_package = "github.com/mootslive/mono/proto/mootslive/v1;mootslivepbv1";
 
 message GetStatusRequest {}
 
@@ -12,4 +14,26 @@ message GetStatusResponse {
 
 service AdminService {
   rpc GetStatus(GetStatusRequest) returns (GetStatusResponse) {}
+}
+
+message GetMeRequest {}
+
+message GetMeResponse {
+  string id = 1;
+  google.protobuf.Timestamp created_at = 2;
+}
+
+message BeginTwitterAuthRequest {}
+message BeginTwitterAuthResponse {
+  string redirect_url = 1;
+}
+
+message FinishTwitterAuthRequest {}
+message FinishTwitterAuthResponse {}
+
+service UserService {
+  rpc GetMe(GetMeRequest) returns (GetMeResponse) {}
+  
+  rpc BeginTwitterAuth(BeginTwitterAuthRequest) returns (BeginTwitterAuthResponse) {}
+  rpc FinishTwitterAuth(FinishTwitterAuthRequest) returns (FinishTwitterAuthResponse) {}
 }
