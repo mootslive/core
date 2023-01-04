@@ -12,6 +12,7 @@ import (
 	"github.com/mootslive/mono/backend"
 	"github.com/mootslive/mono/backend/db"
 	"github.com/mootslive/mono/proto/mootslive/v1/mootslivepbv1connect"
+	"github.com/rs/cors"
 	"golang.org/x/exp/slog"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -63,7 +64,8 @@ func run(out io.Writer) error {
 		mux.Handle(mootslivepbv1connect.NewAdminServiceHandler(&backend.AdminService{}))
 		mux.Handle(mootslivepbv1connect.NewUserServiceHandler(backend.NewUserService(db.New(conn), log)))
 
-		return http.ListenAndServe("localhost:9000", h2c.NewHandler(mux, &http2.Server{}))
+		handler := cors.AllowAll().Handler(mux)
+		return http.ListenAndServe("localhost:9000", h2c.NewHandler(handler, &http2.Server{}))
 	})
 
 	return eg.Wait()

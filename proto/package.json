@@ -1,5 +1,6 @@
 {
   "name": "@mootslive/proto",
+  "version": "1.0.0",
   "devDependencies": {
     "@bufbuild/protoc-gen-connect-web": "^0.3.2",
     "@bufbuild/protoc-gen-es": "^0.3.0"

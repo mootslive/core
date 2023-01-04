@@ -4,15 +4,83 @@ import './index.css';
 import reportWebVitals from './reportWebVitals';
 import {
   createBrowserRouter,
-  RouterProvider
-} from "react-router-dom"
+  RouterProvider,
+  useSearchParams
+} from "react-router-dom";
+import {
+  createConnectTransport,
+  createPromiseClient,
+  Transport
+} from "@bufbuild/connect-web";
+import {
+  UserService,
+} from "@mootslive/proto/mootslive/v1/mootslive_connectweb"
+import { BeginTwitterAuthResponse, FinishTwitterAuthResponse, OAuth2State } from '@mootslive/proto/mootslive/v1/mootslive_pb';
+
+const createTransport = () => {
+  return createConnectTransport({
+    baseUrl: "http://localhost:9000"
+  })
+}
+
+const createUserServiceClient = (t: Transport) => {
+  return createPromiseClient(UserService, t)
+}
 
 const BeginTwitterAuthPage = () => {
-  return <div>Beginning twitter auth</div>
+  const client = createUserServiceClient(createTransport())
+
+  const [resp, setResp] = React.useState<BeginTwitterAuthResponse>()
+  React.useEffect(() => {
+    client.beginTwitterAuth({}).then((resp) => {
+      setResp(resp)
+      if (!resp || !resp.state) {
+        return
+      }
+      localStorage.setItem("twitter_auth_state", JSON.stringify(resp.state))
+    })
+  }, [])
+  return <div>Beginning twitter auth {resp?.redirectUrl}</div>
 }
 
 const FinishTwitterAuthPage = () => {
-  return <div>Finishing twitter auth</div>
+  const client = createUserServiceClient(createTransport())
+
+  const [queryParams] = useSearchParams()
+
+  const state = queryParams.get("state")
+  if (!state) {
+    throw Error("missing state")
+  }
+
+  const code = queryParams.get("code")
+  if (!code) {
+    throw Error("missing code")
+  }
+
+  const [storedState] = React.useState(() => {
+    // getting stored value
+    const saved = localStorage.getItem("twitter_auth_state");
+    if (!saved) {
+      throw new Error("no localstorage state")
+    }
+    const initialValue = JSON.parse(saved) as OAuth2State;
+    return initialValue;
+  });
+  
+
+ const [resp, setResp] = React.useState<FinishTwitterAuthResponse>()
+  React.useEffect(() => {
+    client.finishTwitterAuth({
+      receivedState: state,
+      receivedCode: code,
+      state: storedState,
+    }).then((resp) => {
+      setResp(resp)
+    })
+  }, [code, state, storedState])
+
+  return <div>Finishing twitter auth <br/><br/> {resp ? resp.me: <strong>loading...</strong>}</div>
 }
 
 const router = createBrowserRouter([
@@ -20,9 +88,17 @@ const router = createBrowserRouter([
     path: "/",
     element: <div>hello world</div>
   },
+  {
+    path: "/auth/twitter",
+    element: <BeginTwitterAuthPage/>
+  },
+  {
+    path: "/auth/twitter/callback",
+    element: <FinishTwitterAuthPage/>
+  }
 ])
 
-const root = ReactDOM.createRoot(
+ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 ).render(
   <React.StrictMode>
