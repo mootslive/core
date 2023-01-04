@@ -149,6 +149,53 @@ export class GetMeResponse extends Message<GetMeResponse> {
 }
 
 /**
+ * OAuth2State contains bits of state we need the client to hold during the
+ * OAuth2 3-legged flow. These values aren't something that need to be kept
+ * secret from the client.
+ *
+ * @generated from message mootslive.v1.OAuth2State
+ */
+export class OAuth2State extends Message<OAuth2State> {
+  /**
+   * @generated from field: string state = 1;
+   */
+  state = "";
+
+  /**
+   * @generated from field: string pkce_code_verifier = 2;
+   */
+  pkceCodeVerifier = "";
+
+  constructor(data?: PartialMessage<OAuth2State>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime = proto3;
+  static readonly typeName = "mootslive.v1.OAuth2State";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "state", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "pkce_code_verifier", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): OAuth2State {
+    return new OAuth2State().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): OAuth2State {
+    return new OAuth2State().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): OAuth2State {
+    return new OAuth2State().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: OAuth2State | PlainMessage<OAuth2State> | undefined, b: OAuth2State | PlainMessage<OAuth2State> | undefined): boolean {
+    return proto3.util.equals(OAuth2State, a, b);
+  }
+}
+
+/**
  * @generated from message mootslive.v1.BeginTwitterAuthRequest
  */
 export class BeginTwitterAuthRequest extends Message<BeginTwitterAuthRequest> {
@@ -188,6 +235,11 @@ export class BeginTwitterAuthResponse extends Message<BeginTwitterAuthResponse> 
    */
   redirectUrl = "";
 
+  /**
+   * @generated from field: mootslive.v1.OAuth2State state = 2;
+   */
+  state?: OAuth2State;
+
   constructor(data?: PartialMessage<BeginTwitterAuthResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -197,6 +249,7 @@ export class BeginTwitterAuthResponse extends Message<BeginTwitterAuthResponse> 
   static readonly typeName = "mootslive.v1.BeginTwitterAuthResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "redirect_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "state", kind: "message", T: OAuth2State },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BeginTwitterAuthResponse {
@@ -220,6 +273,24 @@ export class BeginTwitterAuthResponse extends Message<BeginTwitterAuthResponse> 
  * @generated from message mootslive.v1.FinishTwitterAuthRequest
  */
 export class FinishTwitterAuthRequest extends Message<FinishTwitterAuthRequest> {
+  /**
+   * @generated from field: mootslive.v1.OAuth2State state = 1;
+   */
+  state?: OAuth2State;
+
+  /**
+   * received_state is the state url parameter received during the callback to 
+   * the webapp from the relying party.
+   *
+   * @generated from field: string received_state = 2;
+   */
+  receivedState = "";
+
+  /**
+   * @generated from field: string received_code = 3;
+   */
+  receivedCode = "";
+
   constructor(data?: PartialMessage<FinishTwitterAuthRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -228,6 +299,9 @@ export class FinishTwitterAuthRequest extends Message<FinishTwitterAuthRequest> 
   static readonly runtime = proto3;
   static readonly typeName = "mootslive.v1.FinishTwitterAuthRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "state", kind: "message", T: OAuth2State },
+    { no: 2, name: "received_state", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "received_code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): FinishTwitterAuthRequest {
@@ -251,6 +325,11 @@ export class FinishTwitterAuthRequest extends Message<FinishTwitterAuthRequest> 
  * @generated from message mootslive.v1.FinishTwitterAuthResponse
  */
 export class FinishTwitterAuthResponse extends Message<FinishTwitterAuthResponse> {
+  /**
+   * @generated from field: string me = 1;
+   */
+  me = "";
+
   constructor(data?: PartialMessage<FinishTwitterAuthResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -259,6 +338,7 @@ export class FinishTwitterAuthResponse extends Message<FinishTwitterAuthResponse
   static readonly runtime = proto3;
   static readonly typeName = "mootslive.v1.FinishTwitterAuthResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "me", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): FinishTwitterAuthResponse {

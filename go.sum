@@ -36,6 +36,8 @@ github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym
 github.com/Masterminds/semver/v3 v3.1.1/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0cBrbBpGY/8hQs=
 github.com/bufbuild/connect-go v1.4.1 h1:6usL3JGjKhxQpvDlizP7u8VfjAr1JkckcAUbrdcbgNY=
 github.com/bufbuild/connect-go v1.4.1/go.mod h1:9iNvh/NOsfhNBUH5CtvXeVUskQO1xsrEviH7ZArwZ3I=
+github.com/bufbuild/connect-grpcreflect-go v1.0.0 h1:zWsLFYqrT1O2sNJFYfTXI5WxbAyiY2dvevvnJHPtV5A=
+github.com/bufbuild/connect-grpcreflect-go v1.0.0/go.mod h1:825I20H8bfE9rLnBH/046JSpmm3uwpNYdG4duCARetc=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=

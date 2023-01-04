@@ -1,15 +1,32 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import App from './App';
 import reportWebVitals from './reportWebVitals';
+import {
+  createBrowserRouter,
+  RouterProvider
+} from "react-router-dom"
+
+const BeginTwitterAuthPage = () => {
+  return <div>Beginning twitter auth</div>
+}
+
+const FinishTwitterAuthPage = () => {
+  return <div>Finishing twitter auth</div>
+}
+
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <div>hello world</div>
+  },
+])
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
-);
-root.render(
+).render(
   <React.StrictMode>
-    <App />
+    <RouterProvider router={router} />
   </React.StrictMode>
 );
 

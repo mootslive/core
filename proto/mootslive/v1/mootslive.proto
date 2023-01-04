@@ -23,13 +23,30 @@ message GetMeResponse {
   google.protobuf.Timestamp created_at = 2;
 }
 
+// OAuth2State contains bits of state we need the client to hold during the
+// OAuth2 3-legged flow. These values aren't something that need to be kept
+// secret from the client.
+message OAuth2State {
+  string state = 1;
+  string pkce_code_verifier = 2;
+}
+
 message BeginTwitterAuthRequest {}
 message BeginTwitterAuthResponse {
   string redirect_url = 1;
+  OAuth2State state = 2;
 }
 
-message FinishTwitterAuthRequest {}
-message FinishTwitterAuthResponse {}
+message FinishTwitterAuthRequest {
+  OAuth2State state = 1;
+  // received_state is the state url parameter received during the callback to 
+  // the webapp from the relying party.
+  string received_state = 2;
+  string received_code = 3;
+}
+message FinishTwitterAuthResponse {
+  string me = 1;
+}
 
 service UserService {
   rpc GetMe(GetMeRequest) returns (GetMeResponse) {}

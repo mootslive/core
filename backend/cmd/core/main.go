@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	grpcreflect "github.com/bufbuild/connect-grpcreflect-go"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/mootslive/mono/backend"
 	"github.com/mootslive/mono/backend/db"
@@ -51,9 +52,18 @@ func run(out io.Writer) error {
 	})
 	eg.Go(func() error {
 		mux := http.NewServeMux()
+
+		reflector := grpcreflect.NewStaticReflector(
+			mootslivepbv1connect.AdminServiceName,
+			mootslivepbv1connect.UserServiceName,
+		)
+		mux.Handle(grpcreflect.NewHandlerV1(reflector))
+		mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
+
 		mux.Handle(mootslivepbv1connect.NewAdminServiceHandler(&backend.AdminService{}))
-		mux.Handle(mootslivepbv1connect.NewUserServiceHandler(backend.NewUserService(db.New(conn))))
-		return http.ListenAndServe("localhost:8080", h2c.NewHandler(mux, &http2.Server{}))
+		mux.Handle(mootslivepbv1connect.NewUserServiceHandler(backend.NewUserService(db.New(conn), log)))
+
+		return http.ListenAndServe("localhost:9000", h2c.NewHandler(mux, &http2.Server{}))
 	})
 
 	return eg.Wait()
