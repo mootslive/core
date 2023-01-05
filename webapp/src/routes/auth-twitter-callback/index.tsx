@@ -3,7 +3,7 @@ import React from "react"
 import { useSearchParams } from "react-router-dom"
 import { createTransport, createUserServiceClient } from "../../modules/api"
 
-const FinishTwitterAuthPage = () => {
+const AuthTwitterCallbackPage = () => {
     const client = createUserServiceClient(createTransport())
   
     const [queryParams] = useSearchParams()
@@ -43,4 +43,4 @@ const FinishTwitterAuthPage = () => {
     return <div>Finishing twitter auth <br/><br/> {resp ? resp.me: <strong>loading...</strong>}</div>
   }
   
-export default FinishTwitterAuthPage
+export default AuthTwitterCallbackPage
