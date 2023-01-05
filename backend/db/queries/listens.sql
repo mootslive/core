@@ -15,10 +15,9 @@ SELECT * FROM spotify_accounts;
 INSERT INTO spotify_accounts (
     spotify_user_id,
     user_id,
-    access_token,
-    refresh_token,
+    oauth_token,
     created_at
-)  VALUES ($1, $2, $3, $4, $5);
+)  VALUES ($1, $2, $3, $4);
 
 -- name: SelectSpotifyAccountForUpdate :one
 SELECT * FROM spotify_accounts WHERE spotify_user_id = $1 FOR UPDATE;

@@ -137,13 +137,8 @@ func (sp *SpotifyPoller) ScanAccount(
 func clientForSpotifyAccount(
 	ctx context.Context, account db.SpotifyAccount,
 ) *spotify.Client {
-	token := &oauth2.Token{
-		AccessToken:  account.AccessToken,
-		RefreshToken: account.RefreshToken,
-		// Persist this.
-		Expiry: time.Now().Add(time.Second * -10),
-	}
-	httpClient := spotifyauth.New().Client(ctx, token)
+	token := oauth2.Token(account.OauthToken)
+	httpClient := spotifyauth.New().Client(ctx, &token)
 	client := spotify.New(httpClient)
 	return client
 }

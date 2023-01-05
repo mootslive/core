@@ -82,8 +82,7 @@ func main() {
 	}
 	err = queries.CreateSpotifyAccount(ctx, db.CreateSpotifyAccountParams{
 		SpotifyUserID: currentUser.ID,
-		AccessToken:   tok.AccessToken,
-		RefreshToken:  tok.RefreshToken,
+		OauthToken:    db.OAuth2Token(*tok),
 		UserID:        userID,
 		CreatedAt:     time.Now(),
 	})

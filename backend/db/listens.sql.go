@@ -47,17 +47,15 @@ const createSpotifyAccount = `-- name: CreateSpotifyAccount :exec
 INSERT INTO spotify_accounts (
     spotify_user_id,
     user_id,
-    access_token,
-    refresh_token,
+    oauth_token,
     created_at
-)  VALUES ($1, $2, $3, $4, $5)
+)  VALUES ($1, $2, $3, $4)
 `
 
 type CreateSpotifyAccountParams struct {
 	SpotifyUserID string
 	UserID        string
-	AccessToken   string
-	RefreshToken  string
+	OauthToken    OAuth2Token
 	CreatedAt     time.Time
 }
 
@@ -65,15 +63,14 @@ func (q *Queries) CreateSpotifyAccount(ctx context.Context, arg CreateSpotifyAcc
 	_, err := q.db.Exec(ctx, createSpotifyAccount,
 		arg.SpotifyUserID,
 		arg.UserID,
-		arg.AccessToken,
-		arg.RefreshToken,
+		arg.OauthToken,
 		arg.CreatedAt,
 	)
 	return err
 }
 
 const getSpotifyAccountsForScanning = `-- name: GetSpotifyAccountsForScanning :many
-SELECT spotify_user_id, user_id, access_token, refresh_token, last_listened_at, created_at FROM spotify_accounts
+SELECT spotify_user_id, user_id, oauth_token, last_listened_at, created_at FROM spotify_accounts
 `
 
 func (q *Queries) GetSpotifyAccountsForScanning(ctx context.Context) ([]SpotifyAccount, error) {
@@ -88,8 +85,7 @@ func (q *Queries) GetSpotifyAccountsForScanning(ctx context.Context) ([]SpotifyA
 		if err := rows.Scan(
 			&i.SpotifyUserID,
 			&i.UserID,
-			&i.AccessToken,
-			&i.RefreshToken,
+			&i.OauthToken,
 			&i.LastListenedAt,
 			&i.CreatedAt,
 		); err != nil {
@@ -104,7 +100,7 @@ func (q *Queries) GetSpotifyAccountsForScanning(ctx context.Context) ([]SpotifyA
 }
 
 const selectSpotifyAccountForUpdate = `-- name: SelectSpotifyAccountForUpdate :one
-SELECT spotify_user_id, user_id, access_token, refresh_token, last_listened_at, created_at FROM spotify_accounts WHERE spotify_user_id = $1 FOR UPDATE
+SELECT spotify_user_id, user_id, oauth_token, last_listened_at, created_at FROM spotify_accounts WHERE spotify_user_id = $1 FOR UPDATE
 `
 
 func (q *Queries) SelectSpotifyAccountForUpdate(ctx context.Context, spotifyUserID string) (SpotifyAccount, error) {
@@ -113,8 +109,7 @@ func (q *Queries) SelectSpotifyAccountForUpdate(ctx context.Context, spotifyUser
 	err := row.Scan(
 		&i.SpotifyUserID,
 		&i.UserID,
-		&i.AccessToken,
-		&i.RefreshToken,
+		&i.OauthToken,
 		&i.LastListenedAt,
 		&i.CreatedAt,
 	)
