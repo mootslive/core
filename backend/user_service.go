@@ -36,7 +36,12 @@ func NewUserService(queries *db.Queries, log *slog.Logger) *UserService {
 				TokenURL:  "https://api.twitter.com/2/oauth2/token",
 			},
 			RedirectURL: "http://localhost:3000/auth/twitter/callback",
-			Scopes:      []string{"offline.access", "tweet.write"},
+			Scopes: []string{
+				"offline.access",
+				"tweet.write",
+				"users.read",
+				"tweet.read",
+			},
 		},
 	}
 }
