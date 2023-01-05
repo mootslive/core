@@ -1,2 +1,0 @@
-ALTER TABLE listens
-ADD COLUMN source VARCHAR(32) NOT NULL;

@@ -16,6 +16,10 @@ const router = createBrowserRouter([
     element: <div>hello world</div>
   },
   {
+    path: "/me",
+    element: <div>Welcome to your profile....</div>
+  },
+  {
     path: "/auth/twitter",
     element: <AuthTwitterPage/>
   },

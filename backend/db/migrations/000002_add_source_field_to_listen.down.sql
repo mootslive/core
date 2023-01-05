@@ -1,2 +1,0 @@
-ALTER TABLE listens
-DROP COLUMN source;
