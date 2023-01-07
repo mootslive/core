@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/bufbuild/connect-go"
 	grpcreflect "github.com/bufbuild/connect-grpcreflect-go"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/mootslive/mono/backend"
@@ -52,8 +53,9 @@ func run(out io.Writer) error {
 		return nil
 	})
 	eg.Go(func() error {
-		mux := http.NewServeMux()
+		loggingInterceptor := NewLoggingUnaryInteceptor(log)
 
+		mux := http.NewServeMux()
 		reflector := grpcreflect.NewStaticReflector(
 			mootslivepbv1connect.AdminServiceName,
 			mootslivepbv1connect.UserServiceName,
@@ -61,14 +63,31 @@ func run(out io.Writer) error {
 		mux.Handle(grpcreflect.NewHandlerV1(reflector))
 		mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 
-		mux.Handle(mootslivepbv1connect.NewAdminServiceHandler(&backend.AdminService{}))
-		mux.Handle(mootslivepbv1connect.NewUserServiceHandler(backend.NewUserService(db.New(conn), log, conn)))
+		mux.Handle(mootslivepbv1connect.NewAdminServiceHandler(
+			&backend.AdminService{},
+			connect.WithInterceptors(loggingInterceptor),
+		))
+		mux.Handle(mootslivepbv1connect.NewUserServiceHandler(
+			backend.NewUserService(db.New(conn), log, conn),
+			connect.WithInterceptors(loggingInterceptor),
+		))
 
 		handler := cors.AllowAll().Handler(mux)
 		return http.ListenAndServe("localhost:9000", h2c.NewHandler(handler, &http2.Server{}))
 	})
 
 	return eg.Wait()
+}
+
+func NewLoggingUnaryInteceptor(log *slog.Logger) connect.UnaryInterceptorFunc {
+	f := func(next connect.UnaryFunc) connect.UnaryFunc {
+		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			log.Info("received unary request", slog.String("procedure", req.Spec().Procedure))
+			return next(ctx, req)
+		})
+	}
+
+	return connect.UnaryInterceptorFunc(f)
 }
 
 func main() {

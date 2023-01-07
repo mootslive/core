@@ -65,7 +65,7 @@ func (us *UserService) GetMe(
 ) (*connect.Response[mootslivepbv1.GetMeResponse], error) {
 	authCtx, err := auth(req, authOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("auth failed: %w", err)
+		return nil, fmt.Errorf("access denied: %w", err)
 	}
 
 	user, err := us.queries.GetUser(ctx, authCtx.userID)
@@ -92,6 +92,13 @@ func (us *UserService) BeginTwitterAuth(
 	ctx context.Context,
 	req *connect.Request[mootslivepbv1.BeginTwitterAuthRequest],
 ) (*connect.Response[mootslivepbv1.BeginTwitterAuthResponse], error) {
+	_, err := auth(req, authOptions{
+		noAuth: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("access denied: %w", err)
+	}
+
 	state, err := generateRandomString(32)
 	if err != nil {
 		return nil, err
@@ -139,6 +146,13 @@ func (us *UserService) FinishTwitterAuth(
 	ctx context.Context,
 	req *connect.Request[mootslivepbv1.FinishTwitterAuthRequest],
 ) (*connect.Response[mootslivepbv1.FinishTwitterAuthResponse], error) {
+	_, err := auth(req, authOptions{
+		noAuth: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("access denied: %w", err)
+	}
+
 	if req.Msg.State.State != req.Msg.ReceivedState {
 		return nil, fmt.Errorf("state received from twitter did not match initial state")
 	}
