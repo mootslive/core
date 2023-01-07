@@ -220,9 +220,9 @@ export declare class FinishTwitterAuthRequest extends Message<FinishTwitterAuthR
  */
 export declare class FinishTwitterAuthResponse extends Message<FinishTwitterAuthResponse> {
   /**
-   * @generated from field: string me = 1;
+   * @generated from field: string user_id = 1;
    */
-  me: string;
+  userId: string;
 
   constructor(data?: PartialMessage<FinishTwitterAuthResponse>);
 

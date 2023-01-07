@@ -15,3 +15,6 @@ sql:
           - column: spotify_accounts.oauth_token
             go_type:
               type: OAuth2Token
+          - column: twitter_accounts.oauth_token
+            go_type:
+              type: OAuth2Token

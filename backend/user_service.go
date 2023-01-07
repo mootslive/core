@@ -4,13 +4,19 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/mootslive/mono/backend/db"
 	mootslivepbv1 "github.com/mootslive/mono/proto/mootslive/v1"
+	"github.com/segmentio/ksuid"
 	"golang.org/x/exp/slog"
 	"golang.org/x/oauth2"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -20,9 +26,10 @@ type UserService struct {
 	queries    *db.Queries
 	log        *slog.Logger
 	twitterCfg *oauth2.Config
+	db         *pgxpool.Pool
 }
 
-func NewUserService(queries *db.Queries, log *slog.Logger) *UserService {
+func NewUserService(queries *db.Queries, log *slog.Logger, db *pgxpool.Pool) *UserService {
 	return &UserService{
 		log:     log,
 		queries: queries,
@@ -43,6 +50,8 @@ func NewUserService(queries *db.Queries, log *slog.Logger) *UserService {
 				"tweet.read",
 			},
 		},
+
+		db: db,
 	}
 }
 
@@ -95,6 +104,23 @@ func (us *UserService) BeginTwitterAuth(
 	return res, nil
 }
 
+// TODO: Pull this out into a twitter package :D
+// TwitterMeResponse is the structure of the response from
+// https://api.twitter.com/2/users/me
+//
+//	{
+//	  "data": {
+//	    "id": "2244994945",
+//	    "name": "TwitterDev",
+//	    "username": "Twitter Dev"
+//	  }
+//	}
+type TwitterMeResponse struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Username string `json:"username"`
+}
+
 func (us *UserService) FinishTwitterAuth(
 	ctx context.Context,
 	req *connect.Request[mootslivepbv1.FinishTwitterAuthRequest],
@@ -122,10 +148,54 @@ func (us *UserService) FinishTwitterAuth(
 	if err != nil {
 		return nil, err
 	}
+	me := TwitterMeResponse{}
+	if err := json.Unmarshal(bytes, &me); err != nil {
+		return nil, fmt.Errorf("unmarshalling response json: %w", err)
+	}
 
-	// TODO: persist tok
+	acct, err := us.queries.GetTwitterAccount(ctx, me.ID)
+	if err != nil {
+		// TODO: This is fucking horrible. Refactor this.
+		// This is a registration if does not already exist.
+		if errors.Is(err, pgx.ErrNoRows) {
+			tx, err := us.db.BeginTx(ctx, pgx.TxOptions{})
+			if err != nil {
+				return nil, fmt.Errorf("opening tx: %w", err)
+			}
+			queries := us.queries.WithTx(tx)
+
+			userId := ksuid.New().String()
+			now := time.Now()
+			err = queries.CreateUser(ctx, db.CreateUserParams{
+				ID:        userId,
+				CreatedAt: now,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("creating user: %w", err)
+			}
+
+			err = queries.CreateTwitterAccount(ctx, db.CreateTwitterAccountParams{
+				TwitterUserID: me.ID,
+				UserID:        userId,
+				OauthToken:    db.OAuth2Token(*tok),
+				CreatedAt:     now,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("creating twitter account: %w", err)
+			}
+
+			if err := tx.Commit(ctx); err != nil {
+				return nil, fmt.Errorf("committing transaction: %w", err)
+			}
+		} else {
+			return nil, fmt.Errorf("fetching twitter account: %w", err)
+		}
+	}
+
+	// TODO: token issuing
+
 	res := connect.NewResponse(&mootslivepbv1.FinishTwitterAuthResponse{
-		Me: string(bytes),
+		UserId: acct.UserID,
 	})
 	return res, nil
 }

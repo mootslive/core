@@ -45,7 +45,7 @@ message FinishTwitterAuthRequest {
   string received_code = 3;
 }
 message FinishTwitterAuthResponse {
-  string me = 1;
+  string user_id = 1;
 }
 
 service UserService {

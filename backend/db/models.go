@@ -7,8 +7,6 @@ package db
 import (
 	"database/sql"
 	"time"
-
-	"github.com/jackc/pgtype"
 )
 
 type Listen struct {
@@ -31,7 +29,7 @@ type SpotifyAccount struct {
 type TwitterAccount struct {
 	TwitterUserID string
 	UserID        string
-	OauthToken    pgtype.JSON
+	OauthToken    OAuth2Token
 	CreatedAt     time.Time
 }
 

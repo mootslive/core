@@ -94,7 +94,7 @@ export const FinishTwitterAuthRequest = proto3.makeMessageType(
 export const FinishTwitterAuthResponse = proto3.makeMessageType(
   "mootslive.v1.FinishTwitterAuthResponse",
   () => [
-    { no: 1, name: "me", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ],
 );
 

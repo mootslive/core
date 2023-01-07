@@ -8,8 +8,6 @@ package db
 import (
 	"context"
 	"time"
-
-	"github.com/jackc/pgtype"
 )
 
 const createTwitterAccount = `-- name: CreateTwitterAccount :exec
@@ -24,7 +22,7 @@ INSERT INTO twitter_accounts (
 type CreateTwitterAccountParams struct {
 	TwitterUserID string
 	UserID        string
-	OauthToken    pgtype.JSON
+	OauthToken    OAuth2Token
 	CreatedAt     time.Time
 }
 

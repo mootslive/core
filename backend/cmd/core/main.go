@@ -62,7 +62,7 @@ func run(out io.Writer) error {
 		mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 
 		mux.Handle(mootslivepbv1connect.NewAdminServiceHandler(&backend.AdminService{}))
-		mux.Handle(mootslivepbv1connect.NewUserServiceHandler(backend.NewUserService(db.New(conn), log)))
+		mux.Handle(mootslivepbv1connect.NewUserServiceHandler(backend.NewUserService(db.New(conn), log, conn)))
 
 		handler := cors.AllowAll().Handler(mux)
 		return http.ListenAndServe("localhost:9000", h2c.NewHandler(handler, &http2.Server{}))

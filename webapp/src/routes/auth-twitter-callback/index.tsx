@@ -4,33 +4,35 @@ import { useSearchParams } from "react-router-dom"
 import { createTransport, createUserServiceClient } from "../../modules/api"
 
 const AuthTwitterCallbackPage = () => {
-    const client = createUserServiceClient(createTransport())
-  
-    const [queryParams] = useSearchParams()
-  
-    const state = queryParams.get("state")
-    if (!state) {
-      throw Error("missing state")
-    }
-  
-    const code = queryParams.get("code")
-    if (!code) {
-      throw Error("missing code")
-    }
-  
-    const [storedState] = React.useState(() => {
-      // getting stored value
-      const saved = localStorage.getItem("twitter_auth_state");
-      if (!saved) {
-        throw new Error("no localstorage state")
-      }
-      const initialValue = JSON.parse(saved) as OAuth2State;
-      return initialValue;
-    });
-    
-  
-   const [resp, setResp] = React.useState<FinishTwitterAuthResponse>()
-    React.useEffect(() => {
+  const client = createUserServiceClient(createTransport())
+
+  const [queryParams] = useSearchParams()
+
+  const state = queryParams.get("state")
+  if (!state) {
+    throw Error("missing state")
+  }
+
+  const code = queryParams.get("code")
+  if (!code) {
+    throw Error("missing code")
+  }
+
+  const savedStateJSON = localStorage.getItem("twitter_auth_state");
+  if (!savedStateJSON) {
+    throw new Error("no localstorage state")
+  }
+  const storedState = JSON.parse(savedStateJSON) as OAuth2State;
+
+
+  const [resp, setResp] = React.useState<FinishTwitterAuthResponse>()
+  // We use a Ref here to ensure this only runs once even in a remount.
+  // This is because running this request twice invalidates the authorization
+  // code.
+  const authAttempted = React.useRef(false)
+  React.useEffect(() => {
+    if (!authAttempted.current) {
+      authAttempted.current = true
       client.finishTwitterAuth({
         receivedState: state,
         receivedCode: code,
@@ -38,9 +40,10 @@ const AuthTwitterCallbackPage = () => {
       }).then((resp) => {
         setResp(resp)
       })
-    }, [code, state, storedState])
-  
-    return <div>Finishing twitter auth <br/><br/> {resp ? resp.me: <strong>loading...</strong>}</div>
-  }
+    }
+  }, [state, code, client, storedState])
+
+  return <div>Finishing twitter auth <br/><br/> moots user id: {resp ? resp.userId: <strong>loading...</strong>}</div>
+}
   
 export default AuthTwitterCallbackPage
