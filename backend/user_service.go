@@ -27,9 +27,15 @@ type UserService struct {
 	log        *slog.Logger
 	twitterCfg *oauth2.Config
 	db         *pgxpool.Pool
+	authEngine *authEngine
 }
 
-func NewUserService(queries *db.Queries, log *slog.Logger, db *pgxpool.Pool) *UserService {
+func NewUserService(
+	queries *db.Queries,
+	log *slog.Logger,
+	db *pgxpool.Pool,
+	authEngine *authEngine,
+) *UserService {
 	return &UserService{
 		log:     log,
 		queries: queries,
@@ -55,7 +61,8 @@ func NewUserService(queries *db.Queries, log *slog.Logger, db *pgxpool.Pool) *Us
 			},
 		},
 
-		db: db,
+		db:         db,
+		authEngine: authEngine,
 	}
 }
 
@@ -63,7 +70,7 @@ func (us *UserService) GetMe(
 	ctx context.Context,
 	req *connect.Request[mootslivepbv1.GetMeRequest],
 ) (*connect.Response[mootslivepbv1.GetMeResponse], error) {
-	authCtx, err := auth(req, authOptions{})
+	authCtx, err := us.authEngine.validateRequestAuth(req, validateRequestAuthOpts{})
 	if err != nil {
 		return nil, fmt.Errorf("access denied: %w", err)
 	}
@@ -92,7 +99,7 @@ func (us *UserService) BeginTwitterAuth(
 	ctx context.Context,
 	req *connect.Request[mootslivepbv1.BeginTwitterAuthRequest],
 ) (*connect.Response[mootslivepbv1.BeginTwitterAuthResponse], error) {
-	_, err := auth(req, authOptions{
+	_, err := us.authEngine.validateRequestAuth(req, validateRequestAuthOpts{
 		noAuth: true,
 	})
 	if err != nil {
@@ -146,7 +153,7 @@ func (us *UserService) FinishTwitterAuth(
 	ctx context.Context,
 	req *connect.Request[mootslivepbv1.FinishTwitterAuthRequest],
 ) (*connect.Response[mootslivepbv1.FinishTwitterAuthResponse], error) {
-	_, err := auth(req, authOptions{
+	_, err := us.authEngine.validateRequestAuth(req, validateRequestAuthOpts{
 		noAuth: true,
 	})
 	if err != nil {
@@ -154,7 +161,9 @@ func (us *UserService) FinishTwitterAuth(
 	}
 
 	if req.Msg.State.State != req.Msg.ReceivedState {
-		return nil, fmt.Errorf("state received from twitter did not match initial state")
+		return nil, fmt.Errorf(
+			"state received from twitter did not match initial state",
+		)
 	}
 
 	tok, err := us.twitterCfg.Exchange(
@@ -216,7 +225,7 @@ func (us *UserService) FinishTwitterAuth(
 				return nil, fmt.Errorf("committing transaction: %w", err)
 			}
 
-			idToken, err := createIDToken(userId)
+			idToken, err := us.authEngine.createIDToken(userId)
 			if err != nil {
 				return nil, fmt.Errorf("creating id token: %w", err)
 			}
@@ -229,7 +238,7 @@ func (us *UserService) FinishTwitterAuth(
 			return nil, fmt.Errorf("fetching twitter account: %w", err)
 		}
 	}
-	idToken, err := createIDToken(acct.UserID)
+	idToken, err := us.authEngine.createIDToken(acct.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("creating id token: %w", err)
 	}

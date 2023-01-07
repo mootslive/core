@@ -38,6 +38,7 @@ const AuthTwitterCallbackPage = () => {
         receivedCode: code,
         state: storedState,
       }).then((resp) => {
+        localStorage.setItem("id_token", resp.idToken)
         setResp(resp)
       })
     }

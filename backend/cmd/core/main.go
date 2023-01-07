@@ -39,6 +39,11 @@ func run(out io.Writer) error {
 	}
 	defer conn.Close()
 
+	authEngine := backend.NewAuthEngine([]byte("PULLMEFROMACONFIG"))
+
+	adminService := &backend.AdminService{}
+	userService := backend.NewUserService(db.New(conn), log, conn, authEngine)
+
 	eg, gctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
 		poller := &backend.SpotifyPoller{
@@ -64,16 +69,18 @@ func run(out io.Writer) error {
 		mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 
 		mux.Handle(mootslivepbv1connect.NewAdminServiceHandler(
-			&backend.AdminService{},
+			adminService,
 			connect.WithInterceptors(loggingInterceptor),
 		))
 		mux.Handle(mootslivepbv1connect.NewUserServiceHandler(
-			backend.NewUserService(db.New(conn), log, conn),
+			userService,
 			connect.WithInterceptors(loggingInterceptor),
 		))
 
-		handler := cors.AllowAll().Handler(mux)
-		return http.ListenAndServe("localhost:9000", h2c.NewHandler(handler, &http2.Server{}))
+		return http.ListenAndServe(
+			"localhost:9000",
+			h2c.NewHandler(cors.AllowAll().Handler(mux), &http2.Server{}),
+		)
 	})
 
 	return eg.Wait()

@@ -14,7 +14,7 @@ const AuthTwitterPage = () => {
     }
     localStorage.setItem("twitter_auth_state", JSON.stringify(resp.state))
     })
-  }, [])
+  }, [client])
   return <div>Beginning twitter auth <a href={resp?.redirectUrl}>click me</a></div>
 }
 

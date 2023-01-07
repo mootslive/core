@@ -10,21 +10,34 @@ import (
 	"github.com/segmentio/ksuid"
 )
 
+// authEngine manages users and enforcing auth
+type authEngine struct {
+	signingKey []byte
+	issuer     string
+}
+
+func NewAuthEngine(signingKey []byte) *authEngine {
+	return &authEngine{
+		signingKey: signingKey,
+		// TODO: Pass in real URI of service
+		issuer: "https://api.moots.live",
+	}
+}
+
 // TODO: Replace this either Google KMS or a secret pulled from env or
 // secrets manager :))
 const thisIsVeryBadJWTSigningKey = "ahaha-this-wont-last-long"
 
-type IDTokenClaims struct {
+type idTokenClaims struct {
 	jwt.RegisteredClaims
 }
 
-func createIDToken(userID string) (string, error) {
-	idToken := jwt.NewWithClaims(jwt.SigningMethodHS256, IDTokenClaims{
+func (ae *authEngine) createIDToken(userID string) (string, error) {
+	idToken := jwt.NewWithClaims(jwt.SigningMethodHS256, idTokenClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			// TODO: Sort out audience and issuer to match service hostname
-			Issuer: "https://api.moots.live",
+			Issuer: ae.issuer,
 			Audience: []string{
-				"https://api.moots.live",
+				ae.issuer,
 			},
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now().Add(time.Second * -5)),
@@ -35,12 +48,40 @@ func createIDToken(userID string) (string, error) {
 		},
 	})
 
-	tok, err := idToken.SignedString([]byte(thisIsVeryBadJWTSigningKey))
+	tok, err := idToken.SignedString(ae.signingKey)
 	if err != nil {
 		return "", fmt.Errorf("signing jwt: %w", err)
 	}
 
 	return tok, nil
+}
+
+func (ae *authEngine) validateIDToken(idToken string) (*idTokenClaims, error) {
+	token, err := jwt.ParseWithClaims(
+		idToken,
+		&idTokenClaims{},
+		func(t *jwt.Token) (interface{}, error) {
+			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf(
+					"unexpected signing method: %v", t.Header["alg"],
+				)
+			}
+			return ae.signingKey, nil
+		})
+	if err != nil {
+		return nil, fmt.Errorf("parsing token: %w", err)
+	}
+
+	if !token.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	claims, ok := token.Claims.(*idTokenClaims)
+	if !ok {
+		panic("unexpected token claims content")
+	}
+
+	return claims, nil
 }
 
 type authOptions struct {
@@ -54,7 +95,9 @@ type authCtx struct {
 	// TODO: Maybe fetch user and insert into auth ctx?
 }
 
-func auth(req connect.AnyRequest, opt authOptions) (*authCtx, error) {
+func (ae *authEngine) validateRequestAuth(
+	req connect.AnyRequest, opt authOptions,
+) (*authCtx, error) {
 	headers := req.Header()
 	authHeader := headers.Get("Authorization")
 	if opt.noAuth {
@@ -79,28 +122,9 @@ func auth(req connect.AnyRequest, opt authOptions) (*authCtx, error) {
 		return nil, fmt.Errorf("received non-bearer authorization header")
 	}
 
-	token, err := jwt.ParseWithClaims(
-		splitAuthHeader[1],
-		&IDTokenClaims{},
-		func(t *jwt.Token) (interface{}, error) {
-			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf(
-					"unexpected signing method: %v", t.Header["alg"],
-				)
-			}
-			return []byte(thisIsVeryBadJWTSigningKey), nil
-		})
+	claims, err := ae.validateIDToken(splitAuthHeader[1])
 	if err != nil {
-		return nil, fmt.Errorf("parsing token: %w", err)
-	}
-
-	if !token.Valid {
-		return nil, fmt.Errorf("invalid token")
-	}
-
-	claims, ok := token.Claims.(*IDTokenClaims)
-	if !ok {
-		panic("unexpected token claims content")
+		return nil, fmt.Errorf("validating id token: %w", err)
 	}
 
 	return &authCtx{
