@@ -155,8 +155,6 @@ func (us *UserService) FinishTwitterAuth(
 		return nil, fmt.Errorf("unmarshalling response json: %w", err)
 	}
 
-	us.log.Info(" twit acct", "twit", me)
-
 	acct, err := us.queries.GetTwitterAccount(ctx, me.Data.ID)
 	if err != nil {
 		// TODO: This is fucking horrible. Refactor this.
