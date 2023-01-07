@@ -37,7 +37,7 @@ func (q *Queries) CreateTwitterAccount(ctx context.Context, arg CreateTwitterAcc
 }
 
 const getTwitterAccount = `-- name: GetTwitterAccount :one
-SELECT twitter_user_id, user_id, oauth_token, created_at FROM twitter_accounts WHERE twitter_user_id = $1
+SELECT twitter_user_id, user_id, oauth_token, created_at FROM twitter_accounts WHERE twitter_user_id = $1 LIMIT 1
 `
 
 func (q *Queries) GetTwitterAccount(ctx context.Context, twitterUserID string) (TwitterAccount, error) {

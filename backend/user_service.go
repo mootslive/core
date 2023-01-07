@@ -116,9 +116,11 @@ func (us *UserService) BeginTwitterAuth(
 //	  }
 //	}
 type TwitterMeResponse struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Username string `json:"username"`
+	Data struct {
+		ID       string `json:"id"`
+		Name     string `json:"name"`
+		Username string `json:"username"`
+	} `json:"data"`
 }
 
 func (us *UserService) FinishTwitterAuth(
@@ -153,7 +155,9 @@ func (us *UserService) FinishTwitterAuth(
 		return nil, fmt.Errorf("unmarshalling response json: %w", err)
 	}
 
-	acct, err := us.queries.GetTwitterAccount(ctx, me.ID)
+	us.log.Info(" twit acct", "twit", me)
+
+	acct, err := us.queries.GetTwitterAccount(ctx, me.Data.ID)
 	if err != nil {
 		// TODO: This is fucking horrible. Refactor this.
 		// This is a registration if does not already exist.
@@ -175,7 +179,7 @@ func (us *UserService) FinishTwitterAuth(
 			}
 
 			err = queries.CreateTwitterAccount(ctx, db.CreateTwitterAccountParams{
-				TwitterUserID: me.ID,
+				TwitterUserID: me.Data.ID,
 				UserID:        userId,
 				OauthToken:    db.OAuth2Token(*tok),
 				CreatedAt:     now,

@@ -1,5 +1,5 @@
 -- name: GetTwitterAccount :one
-SELECT * FROM twitter_accounts WHERE twitter_user_id = $1;
+SELECT * FROM twitter_accounts WHERE twitter_user_id = $1 LIMIT 1;
 
 -- name: CreateTwitterAccount :exec
 INSERT INTO twitter_accounts (
