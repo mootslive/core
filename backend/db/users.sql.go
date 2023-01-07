@@ -25,3 +25,14 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	_, err := q.db.Exec(ctx, createUser, arg.ID, arg.CreatedAt)
 	return err
 }
+
+const getUser = `-- name: GetUser :one
+SELECT id, created_at FROM users WHERE id = $1
+`
+
+func (q *Queries) GetUser(ctx context.Context, id string) (User, error) {
+	row := q.db.QueryRow(ctx, getUser, id)
+	var i User
+	err := row.Scan(&i.ID, &i.CreatedAt)
+	return i, err
+}

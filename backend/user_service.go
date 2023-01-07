@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/mootslive/mono/backend/db"
@@ -45,8 +44,12 @@ func NewUserService(queries *db.Queries, log *slog.Logger, db *pgxpool.Pool) *Us
 			},
 			RedirectURL: "http://localhost:3000/auth/twitter/callback",
 			Scopes: []string{
+				// generates refresh token
 				"offline.access",
+				// allows us to post
 				"tweet.write",
+				// for some reason, the /me endpoint does not work without the
+				// inclusion of these scopes.
 				"users.read",
 				"tweet.read",
 			},
@@ -60,11 +63,19 @@ func (us *UserService) GetMe(
 	ctx context.Context,
 	req *connect.Request[mootslivepbv1.GetMeRequest],
 ) (*connect.Response[mootslivepbv1.GetMeResponse], error) {
-	// TODO: Check auth
-	// TODO: Fetch user
+	authCtx, err := auth(req, authOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("auth failed: %w", err)
+	}
+
+	user, err := us.queries.GetUser(ctx, authCtx.userID)
+	if err != nil {
+		return nil, fmt.Errorf("fetching user: %w", err)
+	}
+
 	res := connect.NewResponse(&mootslivepbv1.GetMeResponse{
-		Id:        "foo",
-		CreatedAt: timestamppb.Now(),
+		Id:        user.ID,
+		CreatedAt: timestamppb.New(user.CreatedAt),
 	})
 	return res, nil
 }
@@ -123,8 +134,6 @@ type TwitterMeResponse struct {
 		Username string `json:"username"`
 	} `json:"data"`
 }
-
-const thisIsVeryBadJWTSigningKey = "ahaha-this-wont-last-long"
 
 func (us *UserService) FinishTwitterAuth(
 	ctx context.Context,
@@ -215,31 +224,4 @@ func (us *UserService) FinishTwitterAuth(
 		IdToken: idToken,
 	})
 	return res, nil
-}
-
-func createIDToken(userID string) (string, error) {
-	idToken := jwt.NewWithClaims(jwt.SigningMethodHS256, IDTokenClaims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			// TODO: Sort out expiry and issuer to match service hostname
-			Issuer:    "https://moots.live",
-			Audience:  []string{"https://moots.live"},
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now().Add(time.Second * -5)),
-			// TODO: Determine sane token expiry
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24 * 7)),
-			Subject:   userID,
-			ID:        ksuid.New().String(),
-		},
-	})
-
-	tok, err := idToken.SignedString([]byte(thisIsVeryBadJWTSigningKey))
-	if err != nil {
-		return "", fmt.Errorf("signing jwt: %w", err)
-	}
-
-	return tok, nil
-}
-
-type IDTokenClaims struct {
-	jwt.RegisteredClaims
 }
