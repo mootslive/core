@@ -50,7 +50,9 @@ func (sp *SpotifyPoller) Run(ctx context.Context) error {
 	}
 }
 
-const sourceSpotify = "spotify"
+const (
+	sourceSpotify = "spotify"
+)
 
 func (sp *SpotifyPoller) ScanAccount(
 	ctx context.Context, spotifyUserID string,

@@ -12,7 +12,10 @@ require (
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 )
 
-require github.com/jackc/puddle v1.3.0 // indirect
+require (
+	github.com/golang-jwt/jwt/v4 v4.4.3 // indirect
+	github.com/jackc/puddle v1.3.0 // indirect
+)
 
 require (
 	github.com/golang/protobuf v1.5.2 // indirect

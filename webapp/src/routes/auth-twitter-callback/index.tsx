@@ -43,7 +43,7 @@ const AuthTwitterCallbackPage = () => {
     }
   }, [state, code, client, storedState])
 
-  return <div>Finishing twitter auth <br/><br/> moots user id: {resp ? resp.userId: <strong>loading...</strong>}</div>
+  return <div>Finishing twitter auth <br/><br/> moots id token {resp ? resp.idToken: <strong>loading...</strong>}</div>
 }
   
 export default AuthTwitterCallbackPage

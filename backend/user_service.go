@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/mootslive/mono/backend/db"
@@ -123,6 +124,8 @@ type TwitterMeResponse struct {
 	} `json:"data"`
 }
 
+const thisIsVeryBadJWTSigningKey = "ahaha-this-wont-last-long"
+
 func (us *UserService) FinishTwitterAuth(
 	ctx context.Context,
 	req *connect.Request[mootslivepbv1.FinishTwitterAuthRequest],
@@ -189,15 +192,54 @@ func (us *UserService) FinishTwitterAuth(
 			if err := tx.Commit(ctx); err != nil {
 				return nil, fmt.Errorf("committing transaction: %w", err)
 			}
+
+			idToken, err := createIDToken(userId)
+			if err != nil {
+				return nil, fmt.Errorf("creating id token: %w", err)
+			}
+
+			res := connect.NewResponse(&mootslivepbv1.FinishTwitterAuthResponse{
+				IdToken: idToken,
+			})
+			return res, nil
 		} else {
 			return nil, fmt.Errorf("fetching twitter account: %w", err)
 		}
 	}
-
-	// TODO: token issuing
+	idToken, err := createIDToken(acct.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("creating id token: %w", err)
+	}
 
 	res := connect.NewResponse(&mootslivepbv1.FinishTwitterAuthResponse{
-		UserId: acct.UserID,
+		IdToken: idToken,
 	})
 	return res, nil
+}
+
+func createIDToken(userID string) (string, error) {
+	idToken := jwt.NewWithClaims(jwt.SigningMethodHS256, IDTokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			// TODO: Sort out expiry and issuer to match service hostname
+			Issuer:    "https://moots.live",
+			Audience:  []string{"https://moots.live"},
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(time.Second * -5)),
+			// TODO: Determine sane token expiry
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24 * 7)),
+			Subject:   userID,
+			ID:        ksuid.New().String(),
+		},
+	})
+
+	tok, err := idToken.SignedString([]byte(thisIsVeryBadJWTSigningKey))
+	if err != nil {
+		return "", fmt.Errorf("signing jwt: %w", err)
+	}
+
+	return tok, nil
+}
+
+type IDTokenClaims struct {
+	jwt.RegisteredClaims
 }
