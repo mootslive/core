@@ -84,7 +84,7 @@ func (ae *authEngine) validateIDToken(idToken string) (*idTokenClaims, error) {
 	return claims, nil
 }
 
-type authOptions struct {
+type validateRequestAuthOpts struct {
 	// noAuth enforces that the user should not be authenticated to access this
 	// endpoint
 	noAuth bool
@@ -96,7 +96,7 @@ type authCtx struct {
 }
 
 func (ae *authEngine) validateRequestAuth(
-	req connect.AnyRequest, opt authOptions,
+	req connect.AnyRequest, opt validateRequestAuthOpts,
 ) (*authCtx, error) {
 	headers := req.Header()
 	authHeader := headers.Get("Authorization")
