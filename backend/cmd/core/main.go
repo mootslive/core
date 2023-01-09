@@ -39,10 +39,12 @@ func run(out io.Writer) error {
 	}
 	defer conn.Close()
 
-	authEngine := backend.NewAuthEngine([]byte("PULLMEFROMACONFIG"))
+	queries := db.New(conn)
+
+	authEngine := backend.NewAuthEngine([]byte("PULLMEFROMACONFIG"), queries)
 
 	adminService := &backend.AdminService{}
-	userService := backend.NewUserService(db.New(conn), log, conn, authEngine)
+	userService := backend.NewUserService(queries, log, conn, authEngine)
 
 	eg, gctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {

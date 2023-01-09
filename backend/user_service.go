@@ -70,19 +70,16 @@ func (us *UserService) GetMe(
 	ctx context.Context,
 	req *connect.Request[mootslivepbv1.GetMeRequest],
 ) (*connect.Response[mootslivepbv1.GetMeResponse], error) {
-	authCtx, err := us.authEngine.validateRequestAuth(req, validateRequestAuthOpts{})
+	authCtx, err := us.authEngine.handleReq(
+		ctx, req, handleReqOpts{},
+	)
 	if err != nil {
 		return nil, fmt.Errorf("access denied: %w", err)
 	}
 
-	user, err := us.queries.GetUser(ctx, authCtx.userID)
-	if err != nil {
-		return nil, fmt.Errorf("fetching user: %w", err)
-	}
-
 	res := connect.NewResponse(&mootslivepbv1.GetMeResponse{
-		Id:        user.ID,
-		CreatedAt: timestamppb.New(user.CreatedAt),
+		Id:        authCtx.user.ID,
+		CreatedAt: timestamppb.New(authCtx.user.CreatedAt),
 	})
 	return res, nil
 }
@@ -99,7 +96,7 @@ func (us *UserService) BeginTwitterAuth(
 	ctx context.Context,
 	req *connect.Request[mootslivepbv1.BeginTwitterAuthRequest],
 ) (*connect.Response[mootslivepbv1.BeginTwitterAuthResponse], error) {
-	_, err := us.authEngine.validateRequestAuth(req, validateRequestAuthOpts{
+	_, err := us.authEngine.handleReq(ctx, req, handleReqOpts{
 		noAuth: true,
 	})
 	if err != nil {
@@ -153,9 +150,11 @@ func (us *UserService) FinishTwitterAuth(
 	ctx context.Context,
 	req *connect.Request[mootslivepbv1.FinishTwitterAuthRequest],
 ) (*connect.Response[mootslivepbv1.FinishTwitterAuthResponse], error) {
-	_, err := us.authEngine.validateRequestAuth(req, validateRequestAuthOpts{
-		noAuth: true,
-	})
+	_, err := us.authEngine.handleReq(
+		ctx, req, handleReqOpts{
+			noAuth: true,
+		},
+	)
 	if err != nil {
 		return nil, fmt.Errorf("access denied: %w", err)
 	}
@@ -247,4 +246,36 @@ func (us *UserService) FinishTwitterAuth(
 		IdToken: idToken,
 	})
 	return res, nil
+}
+
+func (us *UserService) ListListens(
+	ctx context.Context,
+	req *connect.Request[mootslivepbv1.ListListensRequest],
+) (*connect.Response[mootslivepbv1.ListListensResponse], error) {
+	authCtx, err := us.authEngine.handleReq(
+		ctx, req, handleReqOpts{},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("access denied: %w", err)
+	}
+
+	listens, err := us.queries.ListListensForUser(ctx, authCtx.user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("fetching user: %w", err)
+	}
+
+	res := &mootslivepbv1.ListListensResponse{
+		Listens: make([]*mootslivepbv1.Listen, 0, len(listens)),
+	}
+	for _, listen := range listens {
+		res.Listens = append(res.Listens, &mootslivepbv1.Listen{
+			Id:         listen.ID,
+			CreatedAt:  timestamppb.New(listen.CreatedAt),
+			Source:     listen.Source,
+			Isrc:       listen.Isrc,
+			ListenedAt: timestamppb.New(listen.ListenedAt),
+		})
+	}
+
+	return connect.NewResponse(res), nil
 }

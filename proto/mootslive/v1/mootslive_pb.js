@@ -98,3 +98,35 @@ export const FinishTwitterAuthResponse = proto3.makeMessageType(
   ],
 );
 
+/**
+ * @generated from message mootslive.v1.Listen
+ */
+export const Listen = proto3.makeMessageType(
+  "mootslive.v1.Listen",
+  () => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "created_at", kind: "message", T: Timestamp },
+    { no: 3, name: "source", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "isrc", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "listened_at", kind: "message", T: Timestamp },
+  ],
+);
+
+/**
+ * @generated from message mootslive.v1.ListListensRequest
+ */
+export const ListListensRequest = proto3.makeMessageType(
+  "mootslive.v1.ListListensRequest",
+  [],
+);
+
+/**
+ * @generated from message mootslive.v1.ListListensResponse
+ */
+export const ListListensResponse = proto3.makeMessageType(
+  "mootslive.v1.ListListensResponse",
+  () => [
+    { no: 1, name: "listens", kind: "message", T: Listen, repeated: true },
+  ],
+);
+

@@ -8,3 +8,5 @@ INSERT INTO listens (
     listened_at
 ) VALUES ($1, $2, $3, $4, $5, $6);
 
+-- name: ListListensForUser :many
+SELECT * FROM listens WHERE user_id = $1;

@@ -239,3 +239,90 @@ export declare class FinishTwitterAuthResponse extends Message<FinishTwitterAuth
   static equals(a: FinishTwitterAuthResponse | PlainMessage<FinishTwitterAuthResponse> | undefined, b: FinishTwitterAuthResponse | PlainMessage<FinishTwitterAuthResponse> | undefined): boolean;
 }
 
+/**
+ * @generated from message mootslive.v1.Listen
+ */
+export declare class Listen extends Message<Listen> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 2;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: string source = 3;
+   */
+  source: string;
+
+  /**
+   * @generated from field: string isrc = 4;
+   */
+  isrc: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp listened_at = 5;
+   */
+  listenedAt?: Timestamp;
+
+  constructor(data?: PartialMessage<Listen>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "mootslive.v1.Listen";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Listen;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Listen;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Listen;
+
+  static equals(a: Listen | PlainMessage<Listen> | undefined, b: Listen | PlainMessage<Listen> | undefined): boolean;
+}
+
+/**
+ * @generated from message mootslive.v1.ListListensRequest
+ */
+export declare class ListListensRequest extends Message<ListListensRequest> {
+  constructor(data?: PartialMessage<ListListensRequest>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "mootslive.v1.ListListensRequest";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListListensRequest;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListListensRequest;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListListensRequest;
+
+  static equals(a: ListListensRequest | PlainMessage<ListListensRequest> | undefined, b: ListListensRequest | PlainMessage<ListListensRequest> | undefined): boolean;
+}
+
+/**
+ * @generated from message mootslive.v1.ListListensResponse
+ */
+export declare class ListListensResponse extends Message<ListListensResponse> {
+  /**
+   * @generated from field: repeated mootslive.v1.Listen listens = 1;
+   */
+  listens: Listen[];
+
+  constructor(data?: PartialMessage<ListListensResponse>);
+
+  static readonly runtime: typeof proto3;
+  static readonly typeName = "mootslive.v1.ListListensResponse";
+  static readonly fields: FieldList;
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListListensResponse;
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListListensResponse;
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListListensResponse;
+
+  static equals(a: ListListensResponse | PlainMessage<ListListensResponse> | undefined, b: ListListensResponse | PlainMessage<ListListensResponse> | undefined): boolean;
+}
+

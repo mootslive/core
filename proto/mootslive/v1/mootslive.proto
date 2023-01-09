@@ -48,9 +48,27 @@ message FinishTwitterAuthResponse {
   string id_token = 1;
 }
 
+message Listen {
+  string id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  string source = 3;
+  string isrc = 4;
+  google.protobuf.Timestamp listened_at = 5;
+}
+
+message ListListensRequest {
+
+}
+
+message ListListensResponse {
+  repeated Listen listens = 1;
+}
+
 service UserService {
   rpc GetMe(GetMeRequest) returns (GetMeResponse) {}
   
   rpc BeginTwitterAuth(BeginTwitterAuthRequest) returns (BeginTwitterAuthResponse) {}
   rpc FinishTwitterAuth(FinishTwitterAuthRequest) returns (FinishTwitterAuthResponse) {}
+
+  rpc ListListens(ListListensRequest) returns (ListListensResponse) {}
 }

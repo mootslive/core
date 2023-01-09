@@ -92,6 +92,7 @@ type UserServiceClient interface {
 	GetMe(context.Context, *connect_go.Request[v1.GetMeRequest]) (*connect_go.Response[v1.GetMeResponse], error)
 	BeginTwitterAuth(context.Context, *connect_go.Request[v1.BeginTwitterAuthRequest]) (*connect_go.Response[v1.BeginTwitterAuthResponse], error)
 	FinishTwitterAuth(context.Context, *connect_go.Request[v1.FinishTwitterAuthRequest]) (*connect_go.Response[v1.FinishTwitterAuthResponse], error)
+	ListListens(context.Context, *connect_go.Request[v1.ListListensRequest]) (*connect_go.Response[v1.ListListensResponse], error)
 }
 
 // NewUserServiceClient constructs a client for the mootslive.v1.UserService service. By default, it
@@ -119,6 +120,11 @@ func NewUserServiceClient(httpClient connect_go.HTTPClient, baseURL string, opts
 			baseURL+"/mootslive.v1.UserService/FinishTwitterAuth",
 			opts...,
 		),
+		listListens: connect_go.NewClient[v1.ListListensRequest, v1.ListListensResponse](
+			httpClient,
+			baseURL+"/mootslive.v1.UserService/ListListens",
+			opts...,
+		),
 	}
 }
 
@@ -127,6 +133,7 @@ type userServiceClient struct {
 	getMe             *connect_go.Client[v1.GetMeRequest, v1.GetMeResponse]
 	beginTwitterAuth  *connect_go.Client[v1.BeginTwitterAuthRequest, v1.BeginTwitterAuthResponse]
 	finishTwitterAuth *connect_go.Client[v1.FinishTwitterAuthRequest, v1.FinishTwitterAuthResponse]
+	listListens       *connect_go.Client[v1.ListListensRequest, v1.ListListensResponse]
 }
 
 // GetMe calls mootslive.v1.UserService.GetMe.
@@ -144,11 +151,17 @@ func (c *userServiceClient) FinishTwitterAuth(ctx context.Context, req *connect_
 	return c.finishTwitterAuth.CallUnary(ctx, req)
 }
 
+// ListListens calls mootslive.v1.UserService.ListListens.
+func (c *userServiceClient) ListListens(ctx context.Context, req *connect_go.Request[v1.ListListensRequest]) (*connect_go.Response[v1.ListListensResponse], error) {
+	return c.listListens.CallUnary(ctx, req)
+}
+
 // UserServiceHandler is an implementation of the mootslive.v1.UserService service.
 type UserServiceHandler interface {
 	GetMe(context.Context, *connect_go.Request[v1.GetMeRequest]) (*connect_go.Response[v1.GetMeResponse], error)
 	BeginTwitterAuth(context.Context, *connect_go.Request[v1.BeginTwitterAuthRequest]) (*connect_go.Response[v1.BeginTwitterAuthResponse], error)
 	FinishTwitterAuth(context.Context, *connect_go.Request[v1.FinishTwitterAuthRequest]) (*connect_go.Response[v1.FinishTwitterAuthResponse], error)
+	ListListens(context.Context, *connect_go.Request[v1.ListListensRequest]) (*connect_go.Response[v1.ListListensResponse], error)
 }
 
 // NewUserServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -173,6 +186,11 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect_go.HandlerOpt
 		svc.FinishTwitterAuth,
 		opts...,
 	))
+	mux.Handle("/mootslive.v1.UserService/ListListens", connect_go.NewUnaryHandler(
+		"/mootslive.v1.UserService/ListListens",
+		svc.ListListens,
+		opts...,
+	))
 	return "/mootslive.v1.UserService/", mux
 }
 
@@ -189,4 +207,8 @@ func (UnimplementedUserServiceHandler) BeginTwitterAuth(context.Context, *connec
 
 func (UnimplementedUserServiceHandler) FinishTwitterAuth(context.Context, *connect_go.Request[v1.FinishTwitterAuthRequest]) (*connect_go.Response[v1.FinishTwitterAuthResponse], error) {
 	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("mootslive.v1.UserService.FinishTwitterAuth is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) ListListens(context.Context, *connect_go.Request[v1.ListListensRequest]) (*connect_go.Response[v1.ListListensResponse], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("mootslive.v1.UserService.ListListens is not implemented"))
 }

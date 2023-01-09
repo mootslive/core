@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { BeginTwitterAuthRequest, BeginTwitterAuthResponse, FinishTwitterAuthRequest, FinishTwitterAuthResponse, GetMeRequest, GetMeResponse, GetStatusRequest, GetStatusResponse } from "./mootslive_pb.js";
+import { BeginTwitterAuthRequest, BeginTwitterAuthResponse, FinishTwitterAuthRequest, FinishTwitterAuthResponse, GetMeRequest, GetMeResponse, GetStatusRequest, GetStatusResponse, ListListensRequest, ListListensResponse } from "./mootslive_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -55,6 +55,15 @@ export const UserService = {
       name: "FinishTwitterAuth",
       I: FinishTwitterAuthRequest,
       O: FinishTwitterAuthResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc mootslive.v1.UserService.ListListens
+     */
+    listListens: {
+      name: "ListListens",
+      I: ListListensRequest,
+      O: ListListensResponse,
       kind: MethodKind.Unary,
     },
   }

@@ -1,12 +1,14 @@
 package backend
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/mootslive/mono/backend/db"
 	"github.com/segmentio/ksuid"
 )
 
@@ -14,13 +16,15 @@ import (
 type authEngine struct {
 	signingKey []byte
 	issuer     string
+	queries    *db.Queries
 }
 
-func NewAuthEngine(signingKey []byte) *authEngine {
+func NewAuthEngine(signingKey []byte, queries *db.Queries) *authEngine {
 	return &authEngine{
 		signingKey: signingKey,
 		// TODO: Pass in real URI of service
-		issuer: "https://api.moots.live",
+		issuer:  "https://api.moots.live",
+		queries: queries,
 	}
 }
 
@@ -80,19 +84,18 @@ func (ae *authEngine) validateIDToken(idToken string) (*idTokenClaims, error) {
 	return claims, nil
 }
 
-type validateRequestAuthOpts struct {
+type handleReqOpts struct {
 	// noAuth enforces that the user should not be authenticated to access this
 	// endpoint
 	noAuth bool
 }
 
 type authCtx struct {
-	userID string
-	// TODO: Maybe fetch user and insert into auth ctx?
+	user *db.User
 }
 
-func (ae *authEngine) validateRequestAuth(
-	req connect.AnyRequest, opt validateRequestAuthOpts,
+func (ae *authEngine) handleReq(
+	ctx context.Context, req connect.AnyRequest, opt handleReqOpts,
 ) (*authCtx, error) {
 	headers := req.Header()
 	authHeader := headers.Get("Authorization")
@@ -123,7 +126,12 @@ func (ae *authEngine) validateRequestAuth(
 		return nil, fmt.Errorf("validating id token: %w", err)
 	}
 
+	user, err := ae.queries.GetUser(ctx, claims.Subject)
+	if err != nil {
+		return nil, fmt.Errorf("fetching user: %w", err)
+	}
+
 	return &authCtx{
-		userID: claims.Subject,
+		user: &user,
 	}, nil
 }

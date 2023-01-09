@@ -41,3 +41,34 @@ func (q *Queries) CreateListen(ctx context.Context, arg CreateListenParams) erro
 	)
 	return err
 }
+
+const listListensForUser = `-- name: ListListensForUser :many
+SELECT id, user_id, created_at, listened_at, isrc, source FROM listens WHERE user_id = $1
+`
+
+func (q *Queries) ListListensForUser(ctx context.Context, userID string) ([]Listen, error) {
+	rows, err := q.db.Query(ctx, listListensForUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Listen
+	for rows.Next() {
+		var i Listen
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.CreatedAt,
+			&i.ListenedAt,
+			&i.Isrc,
+			&i.Source,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
