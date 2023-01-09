@@ -24,10 +24,6 @@ func NewAuthEngine(signingKey []byte) *authEngine {
 	}
 }
 
-// TODO: Replace this either Google KMS or a secret pulled from env or
-// secrets manager :))
-const thisIsVeryBadJWTSigningKey = "ahaha-this-wont-last-long"
-
 type idTokenClaims struct {
 	jwt.RegisteredClaims
 }

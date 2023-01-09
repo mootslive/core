@@ -77,7 +77,7 @@ func (sp *SpotifyPoller) ScanAccount(
 	}
 
 	var afterEpochMs int64 = 0
-	if account.LastListenedAt.Valid == true {
+	if account.LastListenedAt.Valid {
 		afterEpochMs = (account.LastListenedAt.Time.Add(time.Second).Unix()) * 1000
 	}
 
