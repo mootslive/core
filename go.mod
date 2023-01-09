@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/bufbuild/connect-go v1.4.1
 	github.com/bufbuild/connect-grpcreflect-go v1.0.0
+	github.com/golang-jwt/jwt/v4 v4.4.3
 	github.com/jackc/pgconn v1.13.0
 	github.com/jackc/pgx/v4 v4.17.2
 	github.com/rs/cors v1.8.3
@@ -12,10 +13,7 @@ require (
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 )
 
-require (
-	github.com/golang-jwt/jwt/v4 v4.4.3 // indirect
-	github.com/jackc/puddle v1.3.0 // indirect
-)
+require github.com/jackc/puddle v1.3.0 // indirect
 
 require (
 	github.com/golang/protobuf v1.5.2 // indirect
