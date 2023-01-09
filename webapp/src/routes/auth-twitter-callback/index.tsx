@@ -42,7 +42,7 @@ const AuthTwitterCallbackPage = () => {
         setResp(resp)
       })
     }
-  }, [state, code, client, storedState])
+  }, [state, code, storedState])
 
   return <div>Finishing twitter auth <br/><br/> moots id token {resp ? resp.idToken: <strong>loading...</strong>}</div>
 }
