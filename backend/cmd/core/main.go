@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	otelconnect "github.com/bufbuild/connect-opentelemetry-go"
 	"io"
 	"net/http"
 	"os"
@@ -61,22 +62,29 @@ func run(out io.Writer) error {
 	})
 	eg.Go(func() error {
 		loggingInterceptor := NewLoggingUnaryInteceptor(log)
+		telemetryInterceptor := otelconnect.NewInterceptor()
 
 		mux := http.NewServeMux()
 		reflector := grpcreflect.NewStaticReflector(
 			mootslivepbv1connect.AdminServiceName,
 			mootslivepbv1connect.UserServiceName,
 		)
-		mux.Handle(grpcreflect.NewHandlerV1(reflector))
-		mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
+		mux.Handle(grpcreflect.NewHandlerV1(
+			reflector,
+			connect.WithInterceptors(telemetryInterceptor, loggingInterceptor),
+		))
+		mux.Handle(grpcreflect.NewHandlerV1Alpha(
+			reflector,
+			connect.WithInterceptors(telemetryInterceptor, loggingInterceptor),
+		))
 
 		mux.Handle(mootslivepbv1connect.NewAdminServiceHandler(
 			adminService,
-			connect.WithInterceptors(loggingInterceptor),
+			connect.WithInterceptors(telemetryInterceptor, loggingInterceptor),
 		))
 		mux.Handle(mootslivepbv1connect.NewUserServiceHandler(
 			userService,
-			connect.WithInterceptors(loggingInterceptor),
+			connect.WithInterceptors(telemetryInterceptor, loggingInterceptor),
 		))
 
 		return http.ListenAndServe(
