@@ -224,7 +224,7 @@ func (us *UserService) FinishTwitterAuth(
 				return nil, fmt.Errorf("committing transaction: %w", err)
 			}
 
-			idToken, err := us.authEngine.createIDToken(userId)
+			idToken, err := us.authEngine.createIDToken(ctx, userId)
 			if err != nil {
 				return nil, fmt.Errorf("creating id token: %w", err)
 			}
@@ -237,7 +237,7 @@ func (us *UserService) FinishTwitterAuth(
 			return nil, fmt.Errorf("fetching twitter account: %w", err)
 		}
 	}
-	idToken, err := us.authEngine.createIDToken(acct.UserID)
+	idToken, err := us.authEngine.createIDToken(ctx, acct.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("creating id token: %w", err)
 	}

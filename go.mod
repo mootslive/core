@@ -5,22 +5,25 @@ go 1.19
 require (
 	github.com/bufbuild/connect-go v1.4.1
 	github.com/bufbuild/connect-grpcreflect-go v1.0.0
+	github.com/bufbuild/connect-opentelemetry-go v0.0.0-20230106165925-ca071675f107
 	github.com/golang-jwt/jwt/v4 v4.4.3
 	github.com/jackc/pgconn v1.13.0
 	github.com/jackc/pgx/v4 v4.17.2
 	github.com/rs/cors v1.8.3
+	go.opentelemetry.io/otel v1.11.2
+	go.opentelemetry.io/otel/exporters/jaeger v1.11.2
+	go.opentelemetry.io/otel/sdk v1.11.2
+	go.opentelemetry.io/otel/trace v1.11.2
 	golang.org/x/exp v0.0.0-20221230185412-738e83a70c30
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 )
 
 require (
-	github.com/bufbuild/connect-opentelemetry-go v0.0.0-20230106165925-ca071675f107 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/jackc/puddle v1.3.0 // indirect
-	go.opentelemetry.io/otel v1.11.2 // indirect
 	go.opentelemetry.io/otel/metric v0.34.0 // indirect
-	go.opentelemetry.io/otel/trace v1.11.2 // indirect
+	golang.org/x/sys v0.3.0 // indirect
 )
 
 require (

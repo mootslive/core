@@ -3,23 +3,47 @@ package main
 import (
 	"context"
 	"fmt"
-	otelconnect "github.com/bufbuild/connect-opentelemetry-go"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"io"
 	"net/http"
 	"os"
 
 	"github.com/bufbuild/connect-go"
 	grpcreflect "github.com/bufbuild/connect-grpcreflect-go"
-	"github.com/jackc/pgx/v4/pgxpool"
+	otelconnect "github.com/bufbuild/connect-opentelemetry-go"
 	"github.com/mootslive/mono/backend"
 	"github.com/mootslive/mono/backend/db"
 	"github.com/mootslive/mono/proto/mootslive/v1/mootslivepbv1connect"
 	"github.com/rs/cors"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"golang.org/x/exp/slog"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"golang.org/x/sync/errgroup"
 )
+
+func setupTraceExporting() error {
+	jaegerExporter, err := jaeger.New(
+		jaeger.WithCollectorEndpoint(),
+	)
+	if err != nil {
+		return fmt.Errorf("creating jaeger exporter: %w", err)
+	}
+	tp := trace.NewTracerProvider(
+		trace.WithBatcher(jaegerExporter),
+		trace.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNamespaceKey.String("mootslive"),
+			semconv.ServiceNameKey.String("core"),
+		)),
+	)
+	otel.SetTracerProvider(tp)
+	return nil
+}
 
 func run(out io.Writer) error {
 	ctx := context.Background()
@@ -28,6 +52,10 @@ func run(out io.Writer) error {
 	}
 	log := slog.New(logOpts.NewJSONHandler(out))
 	log.Info("starting mootslive backend")
+
+	if err := setupTraceExporting(); err != nil {
+		return fmt.Errorf("setting up trace exporting: %w", err)
+	}
 
 	pgxCfg, err := pgxpool.ParseConfig("postgres://mootslive:mootslive@localhost:5432/mootslive")
 	if err != nil {
@@ -42,7 +70,10 @@ func run(out io.Writer) error {
 
 	queries := db.New(conn)
 
-	authEngine := backend.NewAuthEngine([]byte("PULLMEFROMACONFIG"), queries)
+	authEngine := backend.NewAuthEngine(
+		[]byte("PULLMEFROMACONFIG"),
+		&db.TracedQueries{queries},
+	)
 
 	adminService := &backend.AdminService{}
 	userService := backend.NewUserService(queries, log, conn, authEngine)
@@ -98,13 +129,13 @@ func run(out io.Writer) error {
 
 func NewLoggingUnaryInteceptor(log *slog.Logger) connect.UnaryInterceptorFunc {
 	f := func(next connect.UnaryFunc) connect.UnaryFunc {
-		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			log.Info("received unary request", slog.String("procedure", req.Spec().Procedure))
 			return next(ctx, req)
-		})
+		}
 	}
 
-	return connect.UnaryInterceptorFunc(f)
+	return f
 }
 
 func main() {

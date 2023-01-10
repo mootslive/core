@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"github.com/mootslive/mono/backend/trace"
 	"strings"
 	"time"
 
@@ -12,14 +13,18 @@ import (
 	"github.com/segmentio/ksuid"
 )
 
+type userGetter interface {
+	GetUser(ctx context.Context, id string) (db.User, error)
+}
+
 // authEngine manages users and enforcing auth
 type authEngine struct {
 	signingKey []byte
 	issuer     string
-	queries    *db.Queries
+	queries    userGetter
 }
 
-func NewAuthEngine(signingKey []byte, queries *db.Queries) *authEngine {
+func NewAuthEngine(signingKey []byte, queries userGetter) *authEngine {
 	return &authEngine{
 		signingKey: signingKey,
 		// TODO: Pass in real URI of service
@@ -32,7 +37,10 @@ type idTokenClaims struct {
 	jwt.RegisteredClaims
 }
 
-func (ae *authEngine) createIDToken(userID string) (string, error) {
+func (ae *authEngine) createIDToken(ctx context.Context, userID string) (string, error) {
+	ctx, span := trace.Start(ctx, "backend/authEngine.createIDToken")
+	defer span.End()
+
 	idToken := jwt.NewWithClaims(jwt.SigningMethodHS256, idTokenClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer: ae.issuer,
@@ -56,7 +64,10 @@ func (ae *authEngine) createIDToken(userID string) (string, error) {
 	return tok, nil
 }
 
-func (ae *authEngine) validateIDToken(idToken string) (*idTokenClaims, error) {
+func (ae *authEngine) validateIDToken(ctx context.Context, idToken string) (*idTokenClaims, error) {
+	ctx, span := trace.Start(ctx, "backend/authEngine.validateIDToken")
+	defer span.End()
+
 	token, err := jwt.ParseWithClaims(
 		idToken,
 		&idTokenClaims{},
@@ -97,6 +108,9 @@ type authCtx struct {
 func (ae *authEngine) handleReq(
 	ctx context.Context, req connect.AnyRequest, opt handleReqOpts,
 ) (*authCtx, error) {
+	ctx, span := trace.Start(ctx, "backend/authEngine.handleReq")
+	defer span.End()
+
 	headers := req.Header()
 	authHeader := headers.Get("Authorization")
 	if opt.noAuth {
@@ -121,7 +135,7 @@ func (ae *authEngine) handleReq(
 		return nil, fmt.Errorf("received non-bearer authorization header")
 	}
 
-	claims, err := ae.validateIDToken(splitAuthHeader[1])
+	claims, err := ae.validateIDToken(ctx, splitAuthHeader[1])
 	if err != nil {
 		return nil, fmt.Errorf("validating id token: %w", err)
 	}
