@@ -5,21 +5,21 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/mootslive/mono/backend/trace"
 	"time"
 
 	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/mootslive/mono/backend/db"
 	"github.com/segmentio/ksuid"
 	"github.com/zmb3/spotify/v2"
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/exp/slog"
 	"golang.org/x/oauth2"
 )
 
 type SpotifyPoller struct {
-	DB      *pgxpool.Pool
-	Queries *db.Queries
+	Queries *db.TracedQueries
 	Log     *slog.Logger
 }
 
@@ -57,19 +57,20 @@ const (
 func (sp *SpotifyPoller) ScanAccount(
 	ctx context.Context, spotifyUserID string,
 ) error {
-	start := time.Now()
-	tx, err := sp.DB.BeginTx(ctx, pgx.TxOptions{})
+	ctx, span := trace.Start(ctx, "backend/SpotifyPoller.ScanAccount")
+	defer span.End()
+
+	commit, rollback, queries, err := sp.Queries.Tx(ctx)
 	if err != nil {
 		return fmt.Errorf("opening tx: %w", err)
 	}
 	defer func() {
-		if err := tx.Rollback(context.Background()); err != nil {
+		if err := rollback(context.Background()); err != nil {
 			if !errors.Is(err, pgx.ErrTxClosed) {
 				sp.Log.Error("failed to rollback", err)
 			}
 		}
 	}()
-	queries := sp.Queries.WithTx(tx)
 
 	account, err := queries.SelectSpotifyAccountForUpdate(ctx, spotifyUserID)
 	if err != nil {
@@ -123,14 +124,13 @@ func (sp *SpotifyPoller) ScanAccount(
 		}
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := commit(ctx); err != nil {
 		return err
 	}
 
 	sp.Log.Info("recorded listens for user",
 		slog.String("user_id", account.UserID),
 		slog.Int("count", len(played)),
-		slog.String("duration", time.Since(start).String()),
 	)
 
 	return nil
@@ -141,6 +141,7 @@ func clientForSpotifyAccount(
 ) *spotify.Client {
 	token := oauth2.Token(account.OauthToken)
 	httpClient := spotifyauth.New().Client(ctx, &token)
+	httpClient.Transport = otelhttp.NewTransport(httpClient.Transport)
 	client := spotify.New(httpClient)
 	return client
 }

@@ -62,27 +62,26 @@ func run(out io.Writer) error {
 		return fmt.Errorf("parsing cfg: %w", err)
 	}
 
-	conn, err := pgxpool.ConnectConfig(ctx, pgxCfg)
+	pool, err := pgxpool.ConnectConfig(ctx, pgxCfg)
 	if err != nil {
 		return fmt.Errorf("connecting to pgx: %w", err)
 	}
-	defer conn.Close()
+	defer pool.Close()
 
-	queries := db.New(conn)
+	queries := db.NewTracedQueries(pool)
 
 	authEngine := backend.NewAuthEngine(
 		[]byte("PULLMEFROMACONFIG"),
-		&db.TracedQueries{queries},
+		queries,
 	)
 
 	adminService := &backend.AdminService{}
-	userService := backend.NewUserService(queries, log, conn, authEngine)
+	userService := backend.NewUserService(queries, log, authEngine)
 
 	eg, gctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
 		poller := &backend.SpotifyPoller{
-			DB:      conn,
-			Queries: db.New(conn),
+			Queries: queries,
 			Log:     log.WithGroup("poller"),
 		}
 

@@ -13,7 +13,6 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/mootslive/mono/backend/db"
 	mootslivepbv1 "github.com/mootslive/mono/proto/mootslive/v1"
 	"github.com/segmentio/ksuid"
@@ -23,17 +22,15 @@ import (
 )
 
 type UserService struct {
-	queries    *db.Queries
+	queries    *db.TracedQueries
 	log        *slog.Logger
 	twitterCfg *oauth2.Config
-	db         *pgxpool.Pool
 	authEngine *authEngine
 }
 
 func NewUserService(
-	queries *db.Queries,
+	queries *db.TracedQueries,
 	log *slog.Logger,
-	db *pgxpool.Pool,
 	authEngine *authEngine,
 ) *UserService {
 	return &UserService{
@@ -60,8 +57,6 @@ func NewUserService(
 				"tweet.read",
 			},
 		},
-
-		db:         db,
 		authEngine: authEngine,
 	}
 }
@@ -194,11 +189,17 @@ func (us *UserService) FinishTwitterAuth(
 		// TODO: This is fucking horrible. Refactor this.
 		// This is a registration if does not already exist.
 		if errors.Is(err, pgx.ErrNoRows) {
-			tx, err := us.db.BeginTx(ctx, pgx.TxOptions{})
+			commit, rollback, queries, err := us.queries.Tx(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("opening tx: %w", err)
 			}
-			queries := us.queries.WithTx(tx)
+			defer func() {
+				if err := rollback(context.Background()); err != nil {
+					if !errors.Is(err, pgx.ErrTxClosed) {
+						us.log.Error("failed to rollback", err)
+					}
+				}
+			}()
 
 			userId := ksuid.New().String()
 			now := time.Now()
@@ -220,7 +221,7 @@ func (us *UserService) FinishTwitterAuth(
 				return nil, fmt.Errorf("creating twitter account: %w", err)
 			}
 
-			if err := tx.Commit(ctx); err != nil {
+			if err := commit(ctx); err != nil {
 				return nil, fmt.Errorf("committing transaction: %w", err)
 			}
 

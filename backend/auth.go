@@ -15,6 +15,7 @@ import (
 
 type userGetter interface {
 	GetUser(ctx context.Context, id string) (db.User, error)
+	Tx(ctx context.Context) (commit func(ctx context.Context) error, rollback func(ctx context.Context) error, queries userGetter, err error)
 }
 
 // authEngine manages users and enforcing auth
