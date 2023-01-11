@@ -15,22 +15,22 @@ import (
 
 type userGetter interface {
 	GetUser(ctx context.Context, id string) (db.User, error)
-	Tx(ctx context.Context) (commit func(ctx context.Context) error, rollback func(ctx context.Context) error, queries userGetter, err error)
 }
 
 // authEngine manages users and enforcing auth
 type authEngine struct {
 	signingKey []byte
 	issuer     string
-	queries    userGetter
+	db         db.DBTXer
+	queries    db.QueriesWrapper
 }
 
-func NewAuthEngine(signingKey []byte, queries userGetter) *authEngine {
+func NewAuthEngine(signingKey []byte, db db.DBTXer) *authEngine {
 	return &authEngine{
 		signingKey: signingKey,
 		// TODO: Pass in real URI of service
-		issuer:  "https://api.moots.live",
-		queries: queries,
+		issuer: "https://api.moots.live",
+		db:     db,
 	}
 }
 
@@ -141,7 +141,7 @@ func (ae *authEngine) handleReq(
 		return nil, fmt.Errorf("validating id token: %w", err)
 	}
 
-	user, err := ae.queries.GetUser(ctx, claims.Subject)
+	user, err := ae.queries.GetUser(ctx, ae.db, claims.Subject)
 	if err != nil {
 		return nil, fmt.Errorf("fetching user: %w", err)
 	}

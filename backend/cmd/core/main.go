@@ -12,7 +12,6 @@ import (
 	grpcreflect "github.com/bufbuild/connect-grpcreflect-go"
 	otelconnect "github.com/bufbuild/connect-opentelemetry-go"
 	"github.com/mootslive/mono/backend"
-	"github.com/mootslive/mono/backend/db"
 	"github.com/mootslive/mono/proto/mootslive/v1/mootslivepbv1connect"
 	"github.com/rs/cors"
 	"go.opentelemetry.io/otel"
@@ -68,21 +67,19 @@ func run(out io.Writer) error {
 	}
 	defer pool.Close()
 
-	queries := db.NewTracedQueries(pool)
-
 	authEngine := backend.NewAuthEngine(
 		[]byte("PULLMEFROMACONFIG"),
-		queries,
+		pool,
 	)
 
 	adminService := &backend.AdminService{}
-	userService := backend.NewUserService(queries, log, authEngine)
+	userService := backend.NewUserService(pool, log, authEngine)
 
 	eg, gctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
 		poller := &backend.SpotifyPoller{
-			Queries: queries,
-			Log:     log.WithGroup("poller"),
+			DB:  pool,
+			Log: log.WithGroup("poller"),
 		}
 
 		if err := poller.Run(gctx); err != nil {

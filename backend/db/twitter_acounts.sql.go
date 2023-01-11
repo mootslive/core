@@ -26,8 +26,8 @@ type CreateTwitterAccountParams struct {
 	CreatedAt     time.Time
 }
 
-func (q *Queries) CreateTwitterAccount(ctx context.Context, arg CreateTwitterAccountParams) error {
-	_, err := q.db.Exec(ctx, createTwitterAccount,
+func (q *Queries) CreateTwitterAccount(ctx context.Context, db DBTX, arg CreateTwitterAccountParams) error {
+	_, err := db.Exec(ctx, createTwitterAccount,
 		arg.TwitterUserID,
 		arg.UserID,
 		arg.OauthToken,
@@ -40,8 +40,8 @@ const getTwitterAccount = `-- name: GetTwitterAccount :one
 SELECT twitter_user_id, user_id, oauth_token, created_at FROM twitter_accounts WHERE twitter_user_id = $1 LIMIT 1
 `
 
-func (q *Queries) GetTwitterAccount(ctx context.Context, twitterUserID string) (TwitterAccount, error) {
-	row := q.db.QueryRow(ctx, getTwitterAccount, twitterUserID)
+func (q *Queries) GetTwitterAccount(ctx context.Context, db DBTX, twitterUserID string) (TwitterAccount, error) {
+	row := db.QueryRow(ctx, getTwitterAccount, twitterUserID)
 	var i TwitterAccount
 	err := row.Scan(
 		&i.TwitterUserID,

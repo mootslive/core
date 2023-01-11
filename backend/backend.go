@@ -19,7 +19,8 @@ import (
 )
 
 type SpotifyPoller struct {
-	Queries *db.TracedQueries
+	DB      db.DBTXer
+	queries db.QueriesWrapper
 	Log     *slog.Logger
 }
 
@@ -28,7 +29,7 @@ func (sp *SpotifyPoller) Run(ctx context.Context) error {
 
 	for {
 		sp.Log.Info("running account scan")
-		accounts, err := sp.Queries.GetSpotifyAccountsForScanning(ctx)
+		accounts, err := sp.queries.GetSpotifyAccountsForScanning(ctx, sp.DB)
 		if err != nil {
 			return fmt.Errorf("fetching accounts: %w", err)
 		}
@@ -60,19 +61,19 @@ func (sp *SpotifyPoller) ScanAccount(
 	ctx, span := trace.Start(ctx, "backend/SpotifyPoller.ScanAccount")
 	defer span.End()
 
-	commit, rollback, queries, err := sp.Queries.Tx(ctx)
+	tx, err := sp.DB.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("opening tx: %w", err)
 	}
 	defer func() {
-		if err := rollback(context.Background()); err != nil {
+		if err := tx.Rollback(context.Background()); err != nil {
 			if !errors.Is(err, pgx.ErrTxClosed) {
 				sp.Log.Error("failed to rollback", err)
 			}
 		}
 	}()
 
-	account, err := queries.SelectSpotifyAccountForUpdate(ctx, spotifyUserID)
+	account, err := sp.queries.SelectSpotifyAccountForUpdate(ctx, tx, spotifyUserID)
 	if err != nil {
 		return fmt.Errorf("locking account: %w", err)
 	}
@@ -95,7 +96,7 @@ func (sp *SpotifyPoller) ScanAccount(
 	for _, track := range played {
 		track := track
 		sp.Log.Debug("recording listen", "user_id", account.UserID, "track_name", track.Track.Name, "listened_at", track.PlayedAt)
-		err := queries.CreateListen(ctx, db.CreateListenParams{
+		err := sp.queries.CreateListen(ctx, tx, db.CreateListenParams{
 			ID:         ksuid.New().String(),
 			UserID:     account.UserID,
 			CreatedAt:  time.Now(),
@@ -112,7 +113,7 @@ func (sp *SpotifyPoller) ScanAccount(
 	}
 
 	if listenedAt != nil {
-		err := queries.UpdateSpotifyAccountListenedAt(ctx, db.UpdateSpotifyAccountListenedAtParams{
+		err := sp.queries.UpdateSpotifyAccountListenedAt(ctx, tx, db.UpdateSpotifyAccountListenedAtParams{
 			SpotifyUserID: account.SpotifyUserID,
 			LastListenedAt: sql.NullTime{
 				Valid: true,
@@ -124,7 +125,7 @@ func (sp *SpotifyPoller) ScanAccount(
 		}
 	}
 
-	if err := commit(ctx); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
 

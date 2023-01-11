@@ -22,20 +22,20 @@ import (
 )
 
 type UserService struct {
-	queries    *db.TracedQueries
+	queries    db.QueriesWrapper
+	db         db.DBTXer
 	log        *slog.Logger
 	twitterCfg *oauth2.Config
 	authEngine *authEngine
 }
 
 func NewUserService(
-	queries *db.TracedQueries,
+	db db.DBTXer,
 	log *slog.Logger,
 	authEngine *authEngine,
 ) *UserService {
 	return &UserService{
-		log:     log,
-		queries: queries,
+		log: log,
 
 		twitterCfg: &oauth2.Config{
 			ClientID:     os.Getenv("TWITTER_CLIENT_ID"),
@@ -184,17 +184,17 @@ func (us *UserService) FinishTwitterAuth(
 		return nil, fmt.Errorf("unmarshalling response json: %w", err)
 	}
 
-	acct, err := us.queries.GetTwitterAccount(ctx, me.Data.ID)
+	acct, err := us.queries.GetTwitterAccount(ctx, us.db, me.Data.ID)
 	if err != nil {
 		// TODO: This is fucking horrible. Refactor this.
 		// This is a registration if does not already exist.
 		if errors.Is(err, pgx.ErrNoRows) {
-			commit, rollback, queries, err := us.queries.Tx(ctx)
+			tx, err := us.db.Begin(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("opening tx: %w", err)
 			}
 			defer func() {
-				if err := rollback(context.Background()); err != nil {
+				if err := tx.Rollback(context.Background()); err != nil {
 					if !errors.Is(err, pgx.ErrTxClosed) {
 						us.log.Error("failed to rollback", err)
 					}
@@ -203,7 +203,7 @@ func (us *UserService) FinishTwitterAuth(
 
 			userId := ksuid.New().String()
 			now := time.Now()
-			err = queries.CreateUser(ctx, db.CreateUserParams{
+			err = us.queries.CreateUser(ctx, tx, db.CreateUserParams{
 				ID:        userId,
 				CreatedAt: now,
 			})
@@ -211,7 +211,7 @@ func (us *UserService) FinishTwitterAuth(
 				return nil, fmt.Errorf("creating user: %w", err)
 			}
 
-			err = queries.CreateTwitterAccount(ctx, db.CreateTwitterAccountParams{
+			err = us.queries.CreateTwitterAccount(ctx, tx, db.CreateTwitterAccountParams{
 				TwitterUserID: me.Data.ID,
 				UserID:        userId,
 				OauthToken:    db.OAuth2Token(*tok),
@@ -221,7 +221,7 @@ func (us *UserService) FinishTwitterAuth(
 				return nil, fmt.Errorf("creating twitter account: %w", err)
 			}
 
-			if err := commit(ctx); err != nil {
+			if err := tx.Commit(ctx); err != nil {
 				return nil, fmt.Errorf("committing transaction: %w", err)
 			}
 
@@ -260,7 +260,7 @@ func (us *UserService) ListListens(
 		return nil, fmt.Errorf("access denied: %w", err)
 	}
 
-	listens, err := us.queries.ListListensForUser(ctx, authCtx.user.ID)
+	listens, err := us.queries.ListListensForUser(ctx, us.db, authCtx.user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("fetching user: %w", err)
 	}

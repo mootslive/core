@@ -30,8 +30,8 @@ type CreateListenParams struct {
 	ListenedAt time.Time
 }
 
-func (q *Queries) CreateListen(ctx context.Context, arg CreateListenParams) error {
-	_, err := q.db.Exec(ctx, createListen,
+func (q *Queries) CreateListen(ctx context.Context, db DBTX, arg CreateListenParams) error {
+	_, err := db.Exec(ctx, createListen,
 		arg.ID,
 		arg.UserID,
 		arg.CreatedAt,
@@ -46,8 +46,8 @@ const listListensForUser = `-- name: ListListensForUser :many
 SELECT id, user_id, created_at, listened_at, isrc, source FROM listens WHERE user_id = $1
 `
 
-func (q *Queries) ListListensForUser(ctx context.Context, userID string) ([]Listen, error) {
-	rows, err := q.db.Query(ctx, listListensForUser, userID)
+func (q *Queries) ListListensForUser(ctx context.Context, db DBTX, userID string) ([]Listen, error) {
+	rows, err := db.Query(ctx, listListensForUser, userID)
 	if err != nil {
 		return nil, err
 	}
