@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/mootslive/mono/backend/twitter"
 	"io"
 	"os"
 	"time"
@@ -40,22 +41,9 @@ func NewUserService(
 		twitterCfg: &oauth2.Config{
 			ClientID:     os.Getenv("TWITTER_CLIENT_ID"),
 			ClientSecret: os.Getenv("TWITTER_CLIENT_SECRET"),
-			Endpoint: oauth2.Endpoint{
-				AuthStyle: oauth2.AuthStyleInHeader,
-				AuthURL:   "https://twitter.com/i/oauth2/authorize",
-				TokenURL:  "https://api.twitter.com/2/oauth2/token",
-			},
-			RedirectURL: "http://localhost:3000/auth/twitter/callback",
-			Scopes: []string{
-				// generates refresh token
-				"offline.access",
-				// allows us to post
-				"tweet.write",
-				// for some reason, the /me endpoint does not work without the
-				// inclusion of these scopes.
-				"users.read",
-				"tweet.read",
-			},
+			Endpoint:     twitter.Endpoint,
+			RedirectURL:  "http://localhost:3000/auth/twitter/callback",
+			Scopes:       twitter.DefaultScopes(),
 		},
 		authEngine: authEngine,
 	}
@@ -122,25 +110,6 @@ func (us *UserService) BeginTwitterAuth(
 	return res, nil
 }
 
-// TODO: Pull this out into a twitter package :D
-// TwitterMeResponse is the structure of the response from
-// https://api.twitter.com/2/users/me
-//
-//	{
-//	  "data": {
-//	    "id": "2244994945",
-//	    "name": "TwitterDev",
-//	    "username": "Twitter Dev"
-//	  }
-//	}
-type TwitterMeResponse struct {
-	Data struct {
-		ID       string `json:"id"`
-		Name     string `json:"name"`
-		Username string `json:"username"`
-	} `json:"data"`
-}
-
 func (us *UserService) FinishTwitterAuth(
 	ctx context.Context,
 	req *connect.Request[mootslivepbv1.FinishTwitterAuthRequest],
@@ -179,65 +148,66 @@ func (us *UserService) FinishTwitterAuth(
 	if err != nil {
 		return nil, err
 	}
-	me := TwitterMeResponse{}
+	me := twitter.UsersMeResponse{}
 	if err := json.Unmarshal(bytes, &me); err != nil {
 		return nil, fmt.Errorf("unmarshalling response json: %w", err)
 	}
 
 	acct, err := us.queries.GetTwitterAccount(ctx, me.Data.ID)
-	if err != nil {
-		// TODO: This is fucking horrible. Refactor this.
-		// This is a registration if does not already exist.
-		if errors.Is(err, pgx.ErrNoRows) {
-			commit, rollback, tx, err := us.queries.BeginTx(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("opening tx: %w", err)
-			}
-			defer func() {
-				if err := rollback(context.Background()); err != nil {
-					if !errors.Is(err, pgx.ErrTxClosed) {
-						us.log.Error("failed to rollback", err)
-					}
-				}
-			}()
-
-			userId := ksuid.New().String()
-			now := time.Now()
-			err = tx.CreateUser(ctx, db.CreateUserParams{
-				ID:        userId,
-				CreatedAt: now,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("creating user: %w", err)
-			}
-
-			err = tx.CreateTwitterAccount(ctx, db.CreateTwitterAccountParams{
-				TwitterUserID: me.Data.ID,
-				UserID:        userId,
-				OauthToken:    db.OAuth2Token(*tok),
-				CreatedAt:     now,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("creating twitter account: %w", err)
-			}
-
-			if err := commit(ctx); err != nil {
-				return nil, fmt.Errorf("committing transaction: %w", err)
-			}
-
-			idToken, err := us.authEngine.createIDToken(ctx, userId)
-			if err != nil {
-				return nil, fmt.Errorf("creating id token: %w", err)
-			}
-
-			res := connect.NewResponse(&mootslivepbv1.FinishTwitterAuthResponse{
-				IdToken: idToken,
-			})
-			return res, nil
-		} else {
-			return nil, fmt.Errorf("fetching twitter account: %w", err)
-		}
+	isNotFound := errors.Is(err, pgx.ErrNoRows)
+	if err != nil && !isNotFound {
+		return nil, fmt.Errorf("fetching twitter account: %w", err)
 	}
+
+	// TODO: Probably pull most of this out into a registration function
+	if isNotFound {
+		commit, rollback, tx, err := us.queries.BeginTx(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("opening tx: %w", err)
+		}
+		defer func() {
+			if err := rollback(context.Background()); err != nil {
+				if !errors.Is(err, pgx.ErrTxClosed) {
+					us.log.Error("failed to rollback", err)
+				}
+			}
+		}()
+
+		userId := ksuid.New().String()
+		now := time.Now()
+		err = tx.CreateUser(ctx, db.CreateUserParams{
+			ID:        userId,
+			CreatedAt: now,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("creating user: %w", err)
+		}
+
+		err = tx.CreateTwitterAccount(ctx, db.CreateTwitterAccountParams{
+			TwitterUserID: me.Data.ID,
+			UserID:        userId,
+			OauthToken:    db.OAuth2Token(*tok),
+			CreatedAt:     now,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("creating twitter account: %w", err)
+		}
+
+		if err := commit(ctx); err != nil {
+			return nil, fmt.Errorf("committing transaction: %w", err)
+		}
+
+		idToken, err := us.authEngine.createIDToken(ctx, userId)
+		if err != nil {
+			return nil, fmt.Errorf("creating id token: %w", err)
+		}
+
+		res := connect.NewResponse(&mootslivepbv1.FinishTwitterAuthResponse{
+			IdToken: idToken,
+		})
+		return res, nil
+	}
+
 	idToken, err := us.authEngine.createIDToken(ctx, acct.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("creating id token: %w", err)
