@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/mootslive/mono/backend/db"
 	"io"
 	"net/http"
 	"os"
@@ -67,22 +68,19 @@ func run(out io.Writer) error {
 	}
 	defer pool.Close()
 
+	queries := db.NewQueries(pool)
+
 	authEngine := backend.NewAuthEngine(
 		[]byte("PULLMEFROMACONFIG"),
-		pool,
+		queries,
 	)
 
 	adminService := &backend.AdminService{}
-	userService := backend.NewUserService(pool, log, authEngine)
+	userService := backend.NewUserService(queries, log, authEngine)
 
 	eg, gctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
-		poller := &backend.SpotifyPoller{
-			DB:  pool,
-			Log: log.WithGroup("poller"),
-		}
-
-		if err := poller.Run(gctx); err != nil {
+		if err := backend.NewSpotifyPoller(log, queries).Run(gctx); err != nil {
 			return fmt.Errorf("polling: %w", err)
 		}
 		return nil

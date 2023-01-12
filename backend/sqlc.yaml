@@ -9,7 +9,7 @@ sql:
         sql_package: "pgx/v4"
         package: "db"
         out: "db"
-        emit_methods_with_db_argument: true
+        emit_interface: true
         rename:
           isrc: ISRC
         overrides:

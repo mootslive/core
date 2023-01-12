@@ -27,8 +27,8 @@ type CreateSpotifyAccountParams struct {
 	CreatedAt     time.Time
 }
 
-func (q *Queries) CreateSpotifyAccount(ctx context.Context, db DBTX, arg CreateSpotifyAccountParams) error {
-	_, err := db.Exec(ctx, createSpotifyAccount,
+func (q *Queries) CreateSpotifyAccount(ctx context.Context, arg CreateSpotifyAccountParams) error {
+	_, err := q.db.Exec(ctx, createSpotifyAccount,
 		arg.SpotifyUserID,
 		arg.UserID,
 		arg.OauthToken,
@@ -41,8 +41,8 @@ const getSpotifyAccountsForScanning = `-- name: GetSpotifyAccountsForScanning :m
 SELECT spotify_user_id, user_id, oauth_token, last_listened_at, created_at FROM spotify_accounts
 `
 
-func (q *Queries) GetSpotifyAccountsForScanning(ctx context.Context, db DBTX) ([]SpotifyAccount, error) {
-	rows, err := db.Query(ctx, getSpotifyAccountsForScanning)
+func (q *Queries) GetSpotifyAccountsForScanning(ctx context.Context) ([]SpotifyAccount, error) {
+	rows, err := q.db.Query(ctx, getSpotifyAccountsForScanning)
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +71,8 @@ const selectSpotifyAccountForUpdate = `-- name: SelectSpotifyAccountForUpdate :o
 SELECT spotify_user_id, user_id, oauth_token, last_listened_at, created_at FROM spotify_accounts WHERE spotify_user_id = $1 FOR UPDATE
 `
 
-func (q *Queries) SelectSpotifyAccountForUpdate(ctx context.Context, db DBTX, spotifyUserID string) (SpotifyAccount, error) {
-	row := db.QueryRow(ctx, selectSpotifyAccountForUpdate, spotifyUserID)
+func (q *Queries) SelectSpotifyAccountForUpdate(ctx context.Context, spotifyUserID string) (SpotifyAccount, error) {
+	row := q.db.QueryRow(ctx, selectSpotifyAccountForUpdate, spotifyUserID)
 	var i SpotifyAccount
 	err := row.Scan(
 		&i.SpotifyUserID,
@@ -93,7 +93,7 @@ type UpdateSpotifyAccountListenedAtParams struct {
 	SpotifyUserID  string
 }
 
-func (q *Queries) UpdateSpotifyAccountListenedAt(ctx context.Context, db DBTX, arg UpdateSpotifyAccountListenedAtParams) error {
-	_, err := db.Exec(ctx, updateSpotifyAccountListenedAt, arg.LastListenedAt, arg.SpotifyUserID)
+func (q *Queries) UpdateSpotifyAccountListenedAt(ctx context.Context, arg UpdateSpotifyAccountListenedAtParams) error {
+	_, err := q.db.Exec(ctx, updateSpotifyAccountListenedAt, arg.LastListenedAt, arg.SpotifyUserID)
 	return err
 }

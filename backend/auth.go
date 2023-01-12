@@ -21,16 +21,15 @@ type userGetter interface {
 type authEngine struct {
 	signingKey []byte
 	issuer     string
-	db         db.DBTXer
-	queries    db.QueriesWrapper
+	queries    db.TXQuerier
 }
 
-func NewAuthEngine(signingKey []byte, db db.DBTXer) *authEngine {
+func NewAuthEngine(signingKey []byte, queries db.TXQuerier) *authEngine {
 	return &authEngine{
 		signingKey: signingKey,
 		// TODO: Pass in real URI of service
-		issuer: "https://api.moots.live",
-		db:     db,
+		issuer:  "https://api.moots.live",
+		queries: queries,
 	}
 }
 
@@ -141,7 +140,7 @@ func (ae *authEngine) handleReq(
 		return nil, fmt.Errorf("validating id token: %w", err)
 	}
 
-	user, err := ae.queries.GetUser(ctx, ae.db, claims.Subject)
+	user, err := ae.queries.GetUser(ctx, claims.Subject)
 	if err != nil {
 		return nil, fmt.Errorf("fetching user: %w", err)
 	}

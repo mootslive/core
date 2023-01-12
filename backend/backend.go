@@ -19,17 +19,23 @@ import (
 )
 
 type SpotifyPoller struct {
-	DB      db.DBTXer
-	queries db.QueriesWrapper
-	Log     *slog.Logger
+	queries db.TXQuerier
+	log     *slog.Logger
+}
+
+func NewSpotifyPoller(log *slog.Logger, queries db.TXQuerier) *SpotifyPoller {
+	return &SpotifyPoller{
+		log:     log,
+		queries: queries,
+	}
 }
 
 func (sp *SpotifyPoller) Run(ctx context.Context) error {
-	sp.Log.Info("starting poller")
+	sp.log.Info("starting poller")
 
 	for {
-		sp.Log.Info("running account scan")
-		accounts, err := sp.queries.GetSpotifyAccountsForScanning(ctx, sp.DB)
+		sp.log.Info("running account scan")
+		accounts, err := sp.queries.GetSpotifyAccountsForScanning(ctx)
 		if err != nil {
 			return fmt.Errorf("fetching accounts: %w", err)
 		}
@@ -45,7 +51,7 @@ func (sp *SpotifyPoller) Run(ctx context.Context) error {
 		case <-time.After(time.Second * 10):
 			continue
 		case <-ctx.Done():
-			sp.Log.Info("context cancelled, stopping poller")
+			sp.log.Info("context cancelled, stopping poller")
 			return ctx.Err()
 		}
 	}
@@ -61,19 +67,19 @@ func (sp *SpotifyPoller) ScanAccount(
 	ctx, span := trace.Start(ctx, "backend/SpotifyPoller.ScanAccount")
 	defer span.End()
 
-	tx, err := sp.DB.Begin(ctx)
+	commit, rollback, tx, err := sp.queries.BeginTx(ctx)
 	if err != nil {
 		return fmt.Errorf("opening tx: %w", err)
 	}
 	defer func() {
-		if err := tx.Rollback(context.Background()); err != nil {
+		if err := rollback(context.Background()); err != nil {
 			if !errors.Is(err, pgx.ErrTxClosed) {
-				sp.Log.Error("failed to rollback", err)
+				sp.log.Error("failed to rollback", err)
 			}
 		}
 	}()
 
-	account, err := sp.queries.SelectSpotifyAccountForUpdate(ctx, tx, spotifyUserID)
+	account, err := tx.SelectSpotifyAccountForUpdate(ctx, spotifyUserID)
 	if err != nil {
 		return fmt.Errorf("locking account: %w", err)
 	}
@@ -95,8 +101,8 @@ func (sp *SpotifyPoller) ScanAccount(
 	var listenedAt *time.Time
 	for _, track := range played {
 		track := track
-		sp.Log.Debug("recording listen", "user_id", account.UserID, "track_name", track.Track.Name, "listened_at", track.PlayedAt)
-		err := sp.queries.CreateListen(ctx, tx, db.CreateListenParams{
+		sp.log.Debug("recording listen", "user_id", account.UserID, "track_name", track.Track.Name, "listened_at", track.PlayedAt)
+		err := tx.CreateListen(ctx, db.CreateListenParams{
 			ID:         ksuid.New().String(),
 			UserID:     account.UserID,
 			CreatedAt:  time.Now(),
@@ -113,7 +119,7 @@ func (sp *SpotifyPoller) ScanAccount(
 	}
 
 	if listenedAt != nil {
-		err := sp.queries.UpdateSpotifyAccountListenedAt(ctx, tx, db.UpdateSpotifyAccountListenedAtParams{
+		err := tx.UpdateSpotifyAccountListenedAt(ctx, db.UpdateSpotifyAccountListenedAtParams{
 			SpotifyUserID: account.SpotifyUserID,
 			LastListenedAt: sql.NullTime{
 				Valid: true,
@@ -125,11 +131,11 @@ func (sp *SpotifyPoller) ScanAccount(
 		}
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := commit(ctx); err != nil {
 		return err
 	}
 
-	sp.Log.Info("recorded listens for user",
+	sp.log.Info("recorded listens for user",
 		slog.String("user_id", account.UserID),
 		slog.Int("count", len(played)),
 	)
