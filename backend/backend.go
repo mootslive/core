@@ -100,6 +100,7 @@ func (sp *SpotifyPoller) ScanAccount(
 
 	var listenedAt *time.Time
 	for _, track := range played {
+		// TODO: Batch insert these :)
 		track := track
 		sp.log.Debug("recording listen", "user_id", account.UserID, "track_name", track.Track.Name, "listened_at", track.PlayedAt)
 		err := tx.CreateListen(ctx, db.CreateListenParams{

@@ -4,12 +4,9 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/mootslive/mono/backend/twitter"
-	"io"
-	"os"
 	"time"
 
 	"github.com/bufbuild/connect-go"
@@ -38,13 +35,7 @@ func NewUserService(
 		log:     log,
 		queries: queries,
 
-		twitterCfg: &oauth2.Config{
-			ClientID:     os.Getenv("TWITTER_CLIENT_ID"),
-			ClientSecret: os.Getenv("TWITTER_CLIENT_SECRET"),
-			Endpoint:     twitter.Endpoint,
-			RedirectURL:  "http://localhost:3000/auth/twitter/callback",
-			Scopes:       twitter.DefaultScopes(),
-		},
+		twitterCfg: twitter.OAuthConfig(),
 		authEngine: authEngine,
 	}
 }
@@ -138,19 +129,10 @@ func (us *UserService) FinishTwitterAuth(
 		return nil, fmt.Errorf("exchanging code: %w", err)
 	}
 
-	client := us.twitterCfg.Client(ctx, tok)
-	resp, err := client.Get("https://api.twitter.com/2/users/me")
+	client := twitter.NewClient(ctx, tok)
+	me, err := client.GetMe(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("requesting me: %w", err)
-	}
-	defer resp.Body.Close()
-	bytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	me := twitter.UsersMeResponse{}
-	if err := json.Unmarshal(bytes, &me); err != nil {
-		return nil, fmt.Errorf("unmarshalling response json: %w", err)
 	}
 
 	acct, err := us.queries.GetTwitterAccount(ctx, me.Data.ID)
