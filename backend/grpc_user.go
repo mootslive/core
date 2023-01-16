@@ -2,8 +2,6 @@ package backend
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/mootslive/mono/backend/twitter"
@@ -19,19 +17,19 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type UserService struct {
+type UserServiceHandler struct {
 	queries    db.TXQuerier
 	log        *slog.Logger
 	twitterCfg *oauth2.Config
 	authEngine *authEngine
 }
 
-func NewUserService(
+func NewUserServiceHandler(
 	queries db.TXQuerier,
 	log *slog.Logger,
 	authEngine *authEngine,
-) *UserService {
-	return &UserService{
+) *UserServiceHandler {
+	return &UserServiceHandler{
 		log:     log,
 		queries: queries,
 
@@ -40,7 +38,7 @@ func NewUserService(
 	}
 }
 
-func (us *UserService) GetMe(
+func (us *UserServiceHandler) GetMe(
 	ctx context.Context,
 	req *connect.Request[mootslivepbv1.GetMeRequest],
 ) (*connect.Response[mootslivepbv1.GetMeResponse], error) {
@@ -58,15 +56,7 @@ func (us *UserService) GetMe(
 	return res, nil
 }
 
-func generateRandomString(n int) (string, error) {
-	bytes := make([]byte, n)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
-}
-
-func (us *UserService) BeginTwitterAuth(
+func (us *UserServiceHandler) BeginTwitterAuth(
 	ctx context.Context,
 	req *connect.Request[mootslivepbv1.BeginTwitterAuthRequest],
 ) (*connect.Response[mootslivepbv1.BeginTwitterAuthResponse], error) {
@@ -77,22 +67,13 @@ func (us *UserService) BeginTwitterAuth(
 		return nil, fmt.Errorf("access denied: %w", err)
 	}
 
-	state, err := generateRandomString(32)
+	state, pkceCodeVerifier, redirect, err := twitter.BeginTwitterAuth()
 	if err != nil {
-		return nil, err
-	}
-	pkceCodeVerifier, err := generateRandomString(32)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("starting twitter auth: %w", err)
 	}
 
 	res := connect.NewResponse(&mootslivepbv1.BeginTwitterAuthResponse{
-		RedirectUrl: us.twitterCfg.AuthCodeURL(
-			state,
-			oauth2.AccessTypeOffline,
-			oauth2.SetAuthURLParam("code_challenge", pkceCodeVerifier),
-			oauth2.SetAuthURLParam("code_challenge_method", "plain"),
-		),
+		RedirectUrl: redirect,
 		State: &mootslivepbv1.OAuth2State{
 			State:            state,
 			PkceCodeVerifier: pkceCodeVerifier,
@@ -101,7 +82,7 @@ func (us *UserService) BeginTwitterAuth(
 	return res, nil
 }
 
-func (us *UserService) FinishTwitterAuth(
+func (us *UserServiceHandler) FinishTwitterAuth(
 	ctx context.Context,
 	req *connect.Request[mootslivepbv1.FinishTwitterAuthRequest],
 ) (*connect.Response[mootslivepbv1.FinishTwitterAuthResponse], error) {
@@ -114,19 +95,15 @@ func (us *UserService) FinishTwitterAuth(
 		return nil, fmt.Errorf("access denied: %w", err)
 	}
 
-	if req.Msg.State.State != req.Msg.ReceivedState {
-		return nil, fmt.Errorf(
-			"state received from twitter did not match initial state",
-		)
-	}
-
-	tok, err := us.twitterCfg.Exchange(
+	tok, err := twitter.FinishTwitterAuth(
 		ctx,
+		req.Msg.ReceivedState,
+		req.Msg.State.State,
+		req.Msg.State.PkceCodeVerifier,
 		req.Msg.ReceivedCode,
-		oauth2.SetAuthURLParam("code_verifier", req.Msg.State.PkceCodeVerifier),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("exchanging code: %w", err)
+		return nil, fmt.Errorf("twitter auth: %w", err)
 	}
 
 	client := twitter.NewClient(ctx, tok)
@@ -201,7 +178,7 @@ func (us *UserService) FinishTwitterAuth(
 	return res, nil
 }
 
-func (us *UserService) ListListens(
+func (us *UserServiceHandler) ListListens(
 	ctx context.Context,
 	req *connect.Request[mootslivepbv1.ListListensRequest],
 ) (*connect.Response[mootslivepbv1.ListListensResponse], error) {

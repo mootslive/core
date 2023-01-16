@@ -9,11 +9,11 @@ import (
 	"github.com/mootslive/mono/proto/mootslive/v1/mootslivepbv1connect"
 )
 
-type AdminService struct {
+type AdminServerHandler struct {
 	mootslivepbv1connect.UnimplementedAdminServiceHandler
 }
 
-func (as *AdminService) GetStatus(
+func (as *AdminServerHandler) GetStatus(
 	ctx context.Context,
 	req *connect.Request[mootslivepbv1.GetStatusRequest],
 ) (*connect.Response[mootslivepbv1.GetStatusResponse], error) {

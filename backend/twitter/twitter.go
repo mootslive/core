@@ -2,6 +2,8 @@ package twitter
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -99,4 +101,51 @@ func (c *Client) GetMe(ctx context.Context) (*GetMeResponse, error) {
 	}
 
 	return &obj, nil
+}
+
+func generateRandomString(n int) (string, error) {
+	bytes := make([]byte, n)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+func BeginTwitterAuth() (state string, pkceCodeVerifier string, redirect string, err error) {
+	state, err = generateRandomString(32)
+	if err != nil {
+		return "", "", "", err
+	}
+	pkceCodeVerifier, err = generateRandomString(32)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	redirect = OAuthConfig().AuthCodeURL(
+		state,
+		oauth2.AccessTypeOffline,
+		oauth2.SetAuthURLParam("code_challenge", pkceCodeVerifier),
+		oauth2.SetAuthURLParam("code_challenge_method", "plain"),
+	)
+
+	return state, pkceCodeVerifier, redirect, err
+}
+
+func FinishTwitterAuth(ctx context.Context, state, prevState, pkceCodeVerifier, code string) (*oauth2.Token, error) {
+	if state != prevState {
+		return nil, fmt.Errorf(
+			"state received from twitter did not match initial state",
+		)
+	}
+
+	tok, err := OAuthConfig().Exchange(
+		ctx,
+		code,
+		oauth2.SetAuthURLParam("code_verifier", pkceCodeVerifier),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("exchanging code: %w", err)
+	}
+
+	return tok, nil
 }

@@ -75,8 +75,8 @@ func run(out io.Writer) error {
 		queries,
 	)
 
-	adminService := &backend.AdminService{}
-	userService := backend.NewUserService(queries, log, authEngine)
+	adminService := &backend.AdminServerHandler{}
+	userService := backend.NewUserServiceHandler(queries, log, authEngine)
 
 	eg, gctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
